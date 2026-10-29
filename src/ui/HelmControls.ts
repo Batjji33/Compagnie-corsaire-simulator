@@ -5,6 +5,7 @@ import { instruments } from '../weather/Marine';
 import { DOCKS } from '../world/geography';
 
 export class HelmControls {
+  private enabled=true;
   private abort=new AbortController();
   private keys=new Set<string>();
   private panel:HTMLElement;
@@ -29,6 +30,8 @@ export class HelmControls {
     get('all-neutral').addEventListener('click',()=>this.set({port:0,starboard:0}),options);get('rudder-center').addEventListener('click',()=>this.set({rudder:0}),options);
     get('camera-external').addEventListener('click',()=>this.camera('external'),options);get('camera-cockpit').addEventListener('click',()=>this.camera('cockpit'),options);
     window.addEventListener('keydown',(event)=>{
+      if(!this.enabled)return;
+      if(event.target instanceof HTMLElement&&event.target.closest('button,summary,dialog'))return;
       if(event.ctrlKey||event.altKey||event.metaKey||event.target instanceof HTMLInputElement||event.target instanceof HTMLSelectElement||event.target instanceof HTMLTextAreaElement)return;
       const key=event.key.toLowerCase();
       if(key==='c'&&!event.repeat){event.preventDefault();this.camera(this.mode()==='cockpit'?'external':'cockpit');return;}
@@ -44,6 +47,7 @@ export class HelmControls {
   }
   private set(command:Parameters<VesselDynamics['setCommand']>[0]):void {this.dynamics.setCommand(command);this.refresh();}
   update(dt:number):void {
+    if(!this.enabled)return;
     if(this.mode()!=='explore') {
       const held=(key:string)=>Number(this.keys.has(key));
       const common=held('arrowup')-held('arrowdown');
@@ -73,5 +77,10 @@ export class HelmControls {
     this.rudder.setAttribute('aria-valuetext',`${clamp(c.rudder*BOAT.rudderMaxDegrees,-35,35).toFixed(0)} degrés`);
   }
   clearKeys():void {this.keys.clear();}
+  setEnabled(enabled:boolean):void {
+    if(this.enabled===enabled)return;
+    this.enabled=enabled;this.clearKeys();
+    this.panel.querySelectorAll<HTMLInputElement|HTMLButtonElement>('input,button:not([id^="camera-"])').forEach(el=>{el.disabled=!enabled;});
+  }
   dispose():void {this.abort.abort();this.panel.remove();}
 }

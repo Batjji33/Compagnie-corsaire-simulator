@@ -6,6 +6,7 @@ import { CorsaireModel } from './CorsaireModel';
 import { ShoreContact } from '../physics/ShoreContact';
 
 export class Vessel {
+  moored=false;
   readonly marine=new Marine();
   readonly dynamics=new VesselDynamics();
   readonly model=new CorsaireModel();
@@ -15,6 +16,10 @@ export class Vessel {
   constructor(){this.root.add(this.model.root);this.root.name='Navire pilotable';}
   update(dt:number):void {
     const m=this.marine,s=this.dynamics.state;m.update(dt);
+    if(this.moored){
+      this.dynamics.reset({x:s.x,z:s.z,heading:s.heading});
+      m.hazards(s,'',0,dt);return;
+    }
     const contact=this.contact.evaluate(s),weather=m.forces(s);
     const grounded=m.hazards(s,this.contact.label,this.contact.impactSpeed,dt);
     this.dynamics.powerFactor=m.performance;

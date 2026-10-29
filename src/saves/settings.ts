@@ -3,6 +3,8 @@ export interface Settings { quality: Quality; showFps: boolean }
 const KEY = 'corsaire.settings.v1';
 export function loadSettings(): Settings {
   const fallback: Settings = { quality: 'low', showFps: false };
+  // One-way migration of phase 0–3 preferences; all new writes use IndexedDB.
+  if(typeof window==='undefined')return fallback;
   try {
     const value: unknown = JSON.parse(localStorage.getItem(KEY) ?? 'null');
     if (!value || typeof value !== 'object') return fallback;
@@ -12,8 +14,4 @@ export function loadSettings(): Settings {
       showFps: typeof data.showFps === 'boolean' ? data.showFps : false,
     };
   } catch { return fallback; }
-}
-export function saveSettings(settings: Settings): boolean {
-  try { localStorage.setItem(KEY, JSON.stringify(settings)); return true; }
-  catch { return false; }
 }

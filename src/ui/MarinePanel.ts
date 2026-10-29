@@ -2,6 +2,7 @@ import type { Vessel } from '../ships/Vessel';
 import { instruments, SEA, SHOALS } from '../weather/Marine';
 import type { SeaState } from '../weather/Marine';
 import { ROCKS } from '../world/geography';
+import type { InstrumentLayout } from '../saves/GameStore';
 
 /** UI samples physics at 5 Hz; no independent instrument simulation. */
 export class MarinePanel {
@@ -52,6 +53,25 @@ export class MarinePanel {
   private unlockAudio():void {
     if(!this.vessel.marine.sound)return;
     try{this.audio??=new AudioContext();if(this.audio.state==='suspended')void this.audio.resume().catch(()=>{});}catch{/* Visual alarms remain available. */}
+  }
+  syncSettings():void {
+    const m=this.vessel.marine;
+    (document.querySelector('#sea-state') as HTMLSelectElement).value=m.sea;
+    for(const [id,value] of [['wind-direction',m.targetDirection],['marine-hour',m.hour],['tide-phase',m.tidePhase*180/Math.PI]] as const)(document.getElementById(id) as HTMLInputElement).value=String(value);
+    document.querySelectorAll<HTMLInputElement>('[data-marine]').forEach(input=>{input.checked=m[input.dataset.marine as 'evolving'|'dayCycle'|'tideCycle'|'damageEnabled'|'sound'];});
+  }
+  captureLayout():InstrumentLayout {
+    const layout:InstrumentLayout={};
+    for(const el of [...this.panels,document.getElementById('bay-map')!])layout[el.id]={visible:!el.hidden,left:el.style.left?parseFloat(el.style.left):null,top:el.style.top?parseFloat(el.style.top):null};
+    return layout;
+  }
+  restoreLayout(layout:InstrumentLayout):void {
+    for(const el of [...this.panels,document.getElementById('bay-map')!]){
+      const saved=layout[el.id];if(!saved)continue;el.hidden=!saved.visible;
+      if(saved.left!==null&&saved.top!==null)this.place(el,saved.left,saved.top);
+    }
+    document.querySelectorAll<HTMLInputElement>('#instrument-switches input').forEach((input,i)=>{input.checked=!this.panels[i].hidden;});
+    document.getElementById('map-toggle')?.setAttribute('aria-expanded',String(!document.getElementById('bay-map')!.hidden));
   }
   private addPanel(id:string,title:string,content:string,visible:boolean):void {
     const panel=document.createElement('aside');panel.id=`marine-${id}`;panel.className='marine-panel';panel.hidden=!visible;

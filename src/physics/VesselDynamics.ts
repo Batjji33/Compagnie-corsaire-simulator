@@ -17,6 +17,15 @@ export class VesselDynamics {
     this.state={...spawn,surge:0,sway:0,yawRate:0,port:0,starboard:0,rudder:0};
     this.previous={...this.state};
   }
+  reset(pose:{x:number;z:number;heading:number}=BOAT.spawn):void {
+    Object.assign(this.state,pose,{surge:0,sway:0,yawRate:0,port:0,starboard:0,rudder:0});
+    Object.assign(this.previous,this.state);this.setCommand({port:0,starboard:0,rudder:0});
+    this.engines=[{value:0,gear:0,neutral:0},{value:0,gear:0,neutral:0}];
+  }
+  restore(state:VesselState,command:HelmCommand):void {
+    Object.assign(this.state,state);Object.assign(this.previous,state);this.setCommand(command);
+    this.engines=[state.port,state.starboard].map(value=>({value,gear:Math.sign(value),neutral:0}));
+  }
   setCommand(update: Partial<HelmCommand>): void {
     for(const key of ['port','starboard','rudder'] as const) if(update[key]!==undefined) this.command[key]=clamp(update[key],-1,1);
   }
