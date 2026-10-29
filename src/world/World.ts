@@ -1,0 +1,72 @@
+import { ACESFilmicToneMapping, PerspectiveCamera, Scene, SRGBColorSpace, WebGLRenderer } from 'three';
+import { Sky } from 'three/addons/objects/Sky.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CONFIG } from '../config';
+import type { Quality } from '../config';
+import { createDaylight, sunDirection } from '../weather/daylight';
+import { Ocean } from './Ocean';
+
+export class World {
+  readonly scene = new Scene();
+  readonly camera = new PerspectiveCamera(CONFIG.camera.fov, 1, CONFIG.camera.near, CONFIG.camera.far);
+  readonly renderer: WebGLRenderer;
+  readonly controls: OrbitControls;
+  private ocean: Ocean;
+  private sky = new Sky();
+  private quality: Quality;
+  constructor(readonly canvas: HTMLCanvasElement, quality: Quality) {
+    const context = canvas.getContext('webgl2', { alpha: false, antialias: false, powerPreference: 'low-power' });
+    if (!context) throw new Error('WebGL 2 est indisponible. Vérifiez les mises à jour de Safari/iPadOS ou essayez un navigateur compatible.');
+    this.quality = quality;
+    this.renderer = new WebGLRenderer({ canvas, context, antialias: false });
+    this.renderer.outputColorSpace = SRGBColorSpace;
+    this.renderer.toneMapping = ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 0.85;
+    const daylight = createDaylight();
+    this.scene.add(daylight.sun, daylight.ambient);
+    this.scene.fog = daylight.fog;
+    this.sky.scale.setScalar(15000);
+    this.sky.material.uniforms.sunPosition.value.copy(sunDirection);
+    this.sky.material.uniforms.turbidity.value = 3.5;
+    this.sky.material.uniforms.rayleigh.value = 1.5;
+    this.scene.add(this.sky);
+    this.ocean = new Ocean(quality);
+    this.scene.add(this.ocean.mesh);
+    this.controls = new OrbitControls(this.camera, canvas);
+    this.controls.enablePan = false;
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.1;
+    this.controls.minDistance = 12;
+    this.controls.maxDistance = 180;
+    this.controls.minPolarAngle = Math.PI * 0.12;
+    this.controls.maxPolarAngle = Math.PI * 0.49;
+    this.resetCamera();
+  }
+  resetCamera(): void {
+    this.controls.reset();
+    this.camera.position.set(...CONFIG.camera.position);
+    this.controls.target.set(...CONFIG.camera.target);
+    this.controls.update();
+  }
+  zoom(factor: number): void {
+    this.camera.position.sub(this.controls.target).multiplyScalar(factor).clampLength(12, 180).add(this.controls.target);
+    this.controls.update();
+  }
+  setQuality(quality: Quality): void { this.quality = quality; this.ocean.setQuality(quality); this.resize(); }
+  resize(): void {
+    const { width, height } = this.canvas.getBoundingClientRect();
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, CONFIG.quality[this.quality].pixelRatio));
+    this.renderer.setSize(Math.max(1, width), Math.max(1, height), false);
+    this.camera.aspect = width / Math.max(1, height);
+    this.camera.updateProjectionMatrix();
+  }
+  render(dt: number, time: number): void {
+    this.controls.update(dt);
+    this.ocean.update(time, this.camera.position);
+    this.renderer.render(this.scene, this.camera);
+  }
+  dispose(): void {
+    this.controls.dispose(); this.ocean.dispose();
+    this.sky.geometry.dispose(); this.sky.material.dispose(); this.renderer.dispose();
+  }
+}
