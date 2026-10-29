@@ -5,3 +5,20 @@ dist/
 *.local
 .DS_Store
 *.tsbuildinfo
+
+# Local configuration and credentials
+.env
+.env.*
+.dev.vars
+.dev.vars.*
+.npmrc
+.aws/
+.ssh/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Cloudflare local state and logs
+.wrangler/
+*.log

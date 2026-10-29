@@ -24,6 +24,8 @@ npm run preview
 
 `dist/` contient le site statique distribuable ; les chemins relatifs permettent un hébergement en sous-dossier. La cible JavaScript est Safari 15 ; la compatibilité effective dépend aussi de WebGL 2 et du GPU. Vérifier sur le modèle d’iPad visé.
 
+Pour publier le site statique : [déploiement gratuit sur Cloudflare Pages via GitHub](docs/DEPLOYMENT.md).
+
 ## Commandes
 
 Au départ, monter les deux manettes progressivement. Flèches haut/bas : moteurs ensemble ; Q/A : bâbord ; E/D : tribord ; gauche/droite : barre ; X : au milieu ; Espace : neutre ; C : caméra. Les commandes restent en position après relâchement. Le neutre laisse le bateau sur son erre. Les commandes ci-dessous restent disponibles pour la caméra et l’exploration.
