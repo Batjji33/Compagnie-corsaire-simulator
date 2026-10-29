@@ -1,6 +1,6 @@
-# Compagnie Corsaire Simulator — phase 0
+# Compagnie Corsaire Simulator — phase 1
 
-Fondations locales d’un simulateur maritime web. Scène procédurale sans ressource distante, sans API ni service payant. Aucun fichier préexistant : dossier initial vide. Dépôt initialisé sur `develop`.
+Simulateur maritime web local : fondations de la phase 0 et environnement simplifié Saint-Malo–Dinard. Scène procédurale sans ressource distante, sans API ni service payant. Développement sur `develop`. Voir [le dossier environnement](docs/ENVIRONMENT.md) pour les sources, les choix fictifs, les budgets et les limites.
 
 ## Démarrer
 
@@ -26,8 +26,10 @@ npm run preview
 
 - Glisser un doigt ou le bouton gauche de la souris : tourner la caméra.
 - Pincer à deux doigts, utiliser la molette ou les boutons +/− : zoomer.
+- Glisser à deux doigts ou au bouton droit : déplacer la caméra. Maintenir les flèches tactiles pour avancer, reculer ou se déplacer latéralement.
+- Sélectionner Saint-Malo, Dinard, toute la baie ou les forts ; ouvrir Carte pour les repères et le tracé schématique.
 - Recentrer : revenir à la vue initiale.
-- Clavier, après focus sur la scène : flèches pour tourner, +/− pour zoomer, R pour recentrer.
+- Clavier, après focus sur la scène : flèches pour tourner, WASD/ZQSD pour déplacer, +/− pour zoomer, R pour recentrer.
 - Pause : arrêter la mer tout en conservant la caméra libre.
 - Réglages : qualité graphique et compteur FPS réel, enregistrés localement si le stockage est disponible.
 
@@ -56,7 +58,7 @@ La simulation avance à 60 Hz par accumulation du temps réel ; le rendu est pla
 | Équilibrée | 1,5 | 128 × 128 | 30 FPS |
 | Élevée | 2 | 192 × 192 | 60 FPS |
 
-Pas de post-traitement, d’ombres, de textures ni de reflet rendu dans une seconde passe. Le ciel et les reflets sont procéduraux ; les petites rides sont calculées dans le fragment shader et atténuées à distance. Une perte de contexte WebGL affiche une erreur avec rechargement explicite. En l’absence de WebGL 2, un message remplace le démarrage de la scène.
+Pas de post-traitement, d’ombres ni de reflet rendu dans une seconde passe. Quatre textures procédurales de 256 px et un atlas de côte de 512 px, géométries instanciées et détails limités par distance. Le ciel et les reflets sont procéduraux ; les petites rides sont filtrées à distance. Une perte de contexte WebGL affiche une erreur avec rechargement explicite. En l’absence de WebGL 2, un message remplace le démarrage de la scène.
 
 ## Vérification et limites
 
@@ -64,6 +66,6 @@ Build TypeScript strict + Vite et deux tests d’horloge validés. Démarrage HT
 
 Direction d’interface : Data terminal (seed 1752588026), sans nouveau tirage. Surfaces neutres, police système locale, accent émeraude limité aux commandes ; la mer reste l’élément dominant. La question de l’écran est « puis-je explorer l’environnement maritime ? ». L’avertissement de l’inspecteur sur la proportion de couleur est accepté : il mesure la mer 3D elle-même. Aucun chiffre de navigation ni donnée météo réelle n’est inventé.
 
-La phase 0 ne contient ni modèle du Corsaire d’Émeraude, ni littoral géographique, ni propulsion, flottabilité, collisions, missions ou audio. Les vagues sont visuelles ; leurs normales sont une approximation artistique. Les futures sauvegardes de partie sont distinctes des préférences actuelles.
+La phase 1 ajoute le littoral interprété, les monuments et les cales. Elle ne contient pas de modèle du Corsaire d’Émeraude, de propulsion, flottabilité, collisions physiques, missions ou audio. Les vagues et profondeurs sont visuelles. Les futures sauvegardes de partie sont distinctes des préférences actuelles. Cinq tests automatisés couvrent désormais l’horloge et les données géographiques.
 
 Références techniques : [Vite](https://vite.dev/guide/), [Three.js](https://threejs.org/docs/).

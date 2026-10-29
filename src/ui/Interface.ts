@@ -1,6 +1,9 @@
 import { CONFIG } from '../config';
 import type { Quality } from '../config';
 import type { Settings } from '../saves/settings';
+import { VIEWS } from '../world/geography';
+import type { ViewId } from '../world/geography';
+import { bayMapMarkup } from './BayMap';
 
 export class Interface {
   readonly canvas: HTMLCanvasElement;
@@ -8,18 +11,21 @@ export class Interface {
   readonly status: HTMLElement;
   readonly pause: HTMLButtonElement;
   private abort = new AbortController();
+  private movementFrame = 0;
   constructor(root: HTMLElement, settings: Settings, actions: {
     quality: (quality: Quality) => void; fps: (show: boolean) => void;
     pause: () => void; reset: () => void; zoom: (factor: number) => void;
+    view: (id: ViewId) => void; move: (forward: number, right: number) => void;
   }) {
     root.innerHTML = `
       <header class="topbar">
         <div class="identity"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 23h24l-5 5H9zM16 3v17H5zM19 8l9 12h-9" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><div><h1>Compagnie Corsaire <span>Simulator</span></h1><p>Saint-Malo · Dinard</p></div></div>
-        <button id="settings-toggle" aria-expanded="false" aria-controls="settings">Réglages</button>
+        <div class="header-actions"><button id="map-toggle" aria-expanded="false" aria-controls="bay-map">Carte</button><button id="settings-toggle" aria-expanded="false" aria-controls="settings">Réglages</button></div>
       </header>
       <section class="viewport" aria-label="Environnement maritime 3D">
         <canvas tabindex="0" aria-label="Vue de la mer. Glissez pour orienter la caméra, pincez pour zoomer." aria-describedby="camera-help"></canvas>
-        <div class="scene-caption"><span>Environnement d’essai</span><strong>Au large, tout commence.</strong><p>Phase 0 · Fondations techniques</p></div>
+        <div class="scene-caption"><label for="view-select">Explorer la Côte d’Émeraude</label><select id="view-select">${Object.entries(VIEWS).map(([id,view])=>`<option value="${id}">${view.label}</option>`).join('')}</select><p>Phase 1 · Baie et patrimoine</p></div>
+        ${bayMapMarkup()}
         <output id="fps" hidden aria-label="Images par seconde">Mesure…</output>
         <aside id="settings" hidden aria-label="Réglages graphiques">
           <div class="panel-title"><h2>Réglages</h2><button id="settings-close" aria-label="Fermer les réglages">×</button></div>
@@ -30,32 +36,58 @@ export class Interface {
           <p class="storage-status" role="status"></p>
         </aside>
         <div class="camera-controls" aria-label="Commandes caméra"><button id="zoom-in" aria-label="Rapprocher la caméra">+</button><button id="zoom-out" aria-label="Éloigner la caméra">−</button><button id="reset">Recentrer</button></div>
+        <div class="travel-controls" aria-label="Déplacer la caméra dans la baie"><button id="move-left" aria-label="Déplacer à gauche">←</button><button id="move-forward" aria-label="Avancer dans la baie">↑</button><button id="move-back" aria-label="Reculer dans la baie">↓</button><button id="move-right" aria-label="Déplacer à droite">→</button></div>
         <p class="portrait-note">Pour une vue plus large, tournez votre appareil.</p>
       </section>
-      <footer><div><span id="state" role="status">Initialisation…</span><p id="camera-help">Glisser pour regarder · Pincer pour zoomer</p></div><button id="pause" aria-pressed="false">Pause</button></footer>`;
+      <footer><div><span id="state" role="status">Initialisation…</span><p id="camera-help">Glisser : regarder · Deux doigts : déplacer / zoomer</p></div><button id="pause" aria-pressed="false">Pause</button></footer>`;
     const get = <T extends HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
     this.canvas = get('canvas'); this.fps = get('#fps'); this.status = get('#state'); this.pause = get('#pause');
     const panel = get('#settings');
     const toggle = get<HTMLButtonElement>('#settings-toggle');
-    const show = (open: boolean) => { panel.hidden = !open; toggle.setAttribute('aria-expanded', String(open)); if (open) get('#quality').focus(); else toggle.focus(); };
+    const show = (open: boolean) => { panel.hidden = !open; toggle.setAttribute('aria-expanded', String(open)); if (open) { get('#bay-map').hidden=true; get('#map-toggle').setAttribute('aria-expanded','false'); get('#quality').focus(); } else toggle.focus(); };
     const options = { signal: this.abort.signal };
+    const map=get('#bay-map'), mapToggle=get('#map-toggle');
+    mapToggle.addEventListener('click',()=> { map.hidden=!map.hidden; mapToggle.setAttribute('aria-expanded',String(!map.hidden)); if(!map.hidden) { panel.hidden=true; toggle.setAttribute('aria-expanded','false'); } },options);
+    const view=get<HTMLSelectElement>('#view-select');
+    view.addEventListener('change',()=>actions.view(view.value as ViewId),options);
+    const stopMovement=()=>cancelAnimationFrame(this.movementFrame);
+    window.addEventListener('blur',stopMovement,options);
+    document.addEventListener('visibilitychange',stopMovement,options);
+    for(const [id,forward,right] of [['move-forward',120,0],['move-back',-120,0],['move-left',0,-120],['move-right',0,120]] as const) {
+      const button=get(`#${id}`);
+      button.addEventListener('click',(event)=> { if(event.detail===0) actions.move(forward,right); },options);
+      button.addEventListener('pointerdown',(event)=> {
+        if(event.button!==0)return;
+        stopMovement(); button.setPointerCapture(event.pointerId);
+        let previous=performance.now();
+        const tick=(now:number)=> { const dt=Math.min(.05,(now-previous)/1000); previous=now; actions.move(forward*dt*1.5,right*dt*1.5); this.movementFrame=requestAnimationFrame(tick); };
+        this.movementFrame=requestAnimationFrame(tick);
+      },options);
+      for(const type of ['pointerup','pointercancel','lostpointercapture']) button.addEventListener(type,stopMovement,options);
+    }
     toggle.addEventListener('click', () => show(Boolean(panel.hidden)), options);
     get('#settings-close').addEventListener('click', () => show(false), options);
-    root.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !panel.hidden) show(false); }, options);
+    root.addEventListener('keydown', (event) => { if (event.key === 'Escape') { if(!panel.hidden) show(false); if(!map.hidden) { map.hidden=true; mapToggle.setAttribute('aria-expanded','false'); mapToggle.focus(); } } }, options);
     const quality = get<HTMLSelectElement>('#quality'); quality.value = settings.quality;
     quality.addEventListener('change', () => actions.quality(quality.value as Quality), options);
     const fps = get<HTMLInputElement>('#fps-toggle'); fps.checked = settings.showFps; this.fps.hidden = !settings.showFps;
     fps.addEventListener('change', () => { this.fps.hidden = !fps.checked; actions.fps(fps.checked); }, options);
     this.pause.addEventListener('click', actions.pause, options);
-    get('#reset').addEventListener('click', actions.reset, options);
+    get('#reset').addEventListener('click', () => { view.value='malo'; actions.reset(); }, options);
     get('#zoom-in').addEventListener('click', () => actions.zoom(0.8), options);
     get('#zoom-out').addEventListener('click', () => actions.zoom(1.25), options);
     this.canvas.addEventListener('keydown', (event) => {
       if (event.key === '+' || event.key === '=') actions.zoom(0.8);
       if (event.key === '-') actions.zoom(1.25);
-      if (event.key.toLowerCase() === 'r') actions.reset();
+      if (event.key.toLowerCase() === 'r') { view.value='malo'; actions.reset(); }
+      const movement: Record<string,[number,number]>={w:[120,0],z:[120,0],s:[-120,0],a:[0,-120],q:[0,-120],d:[0,120]};
+      const shift=movement[event.key.toLowerCase()];
+      if(shift) { event.preventDefault(); actions.move(...shift); }
     }, options);
   }
+  updatePosition(x: number, z: number): void {
+    const dot=document.getElementById('map-camera'); dot?.setAttribute('cx',String(x)); dot?.setAttribute('cy',String(z));
+  }
   storageWarning(): void { document.querySelector('.storage-status')!.textContent = 'Réglages conservés pour cette session uniquement : stockage indisponible.'; }
-  dispose(): void { this.abort.abort(); }
+  dispose(): void { cancelAnimationFrame(this.movementFrame); this.abort.abort(); }
 }

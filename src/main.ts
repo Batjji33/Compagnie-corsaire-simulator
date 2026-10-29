@@ -24,6 +24,7 @@ try {
       ui.status.textContent = loop.paused ? 'Mer en pause · Caméra libre' : 'Mer animée · Caméra libre';
     },
     reset: () => world.resetCamera(), zoom: (factor) => world.zoom(factor),
+    view: (id) => world.setView(id), move: (forward,right) => world.move(forward,right),
   });
   world = new World(ui.canvas, settings.quality);
   // Future physics, ships and missions register their fixed updates here.
@@ -31,6 +32,7 @@ try {
     world.render(dt, time);
     const fps = meter.sample(performance.now());
     if (settings.showFps && fps !== null) ui.fps.textContent = `${fps} FPS`;
+    if (fps !== null) ui.updatePosition(world.camera.position.x,world.camera.position.z);
   }, showError);
   loop.fps = CONFIG.quality[settings.quality].fps;
   const abort = new AbortController();
