@@ -16,6 +16,7 @@ export class Interface {
     quality: (quality: Quality) => void; fps: (show: boolean) => void;
     pause: () => void; reset: () => void; zoom: (factor: number) => void;
     view: (id: ViewId) => void; move: (forward: number, right: number) => void;
+    exploring:()=>boolean;
   }) {
     root.innerHTML = `
       <header class="topbar">
@@ -24,7 +25,7 @@ export class Interface {
       </header>
       <section class="viewport" aria-label="Environnement maritime 3D">
         <canvas tabindex="0" aria-label="Vue de la mer. Glissez pour orienter la caméra, pincez pour zoomer." aria-describedby="camera-help"></canvas>
-        <div class="scene-caption"><label for="view-select">Explorer la Côte d’Émeraude</label><select id="view-select">${Object.entries(VIEWS).map(([id,view])=>`<option value="${id}">${view.label}</option>`).join('')}</select><p>Phase 1 · Baie et patrimoine</p></div>
+        <div class="scene-caption"><label for="view-select">Caméra et exploration</label><select id="view-select"><option value="">À bord du Corsaire</option>${Object.entries(VIEWS).map(([id,view])=>`<option value="${id}">${view.label}</option>`).join('')}</select></div>
         ${bayMapMarkup()}
         <output id="fps" hidden aria-label="Images par seconde">Mesure…</output>
         <aside id="settings" hidden aria-label="Réglages graphiques">
@@ -49,7 +50,7 @@ export class Interface {
     const map=get('#bay-map'), mapToggle=get('#map-toggle');
     mapToggle.addEventListener('click',()=> { map.hidden=!map.hidden; mapToggle.setAttribute('aria-expanded',String(!map.hidden)); if(!map.hidden) { panel.hidden=true; toggle.setAttribute('aria-expanded','false'); } },options);
     const view=get<HTMLSelectElement>('#view-select');
-    view.addEventListener('change',()=>actions.view(view.value as ViewId),options);
+    view.addEventListener('change',()=> {if(view.value)actions.view(view.value as ViewId);else actions.reset();},options);
     const stopMovement=()=>cancelAnimationFrame(this.movementFrame);
     window.addEventListener('blur',stopMovement,options);
     document.addEventListener('visibilitychange',stopMovement,options);
@@ -73,18 +74,19 @@ export class Interface {
     const fps = get<HTMLInputElement>('#fps-toggle'); fps.checked = settings.showFps; this.fps.hidden = !settings.showFps;
     fps.addEventListener('change', () => { this.fps.hidden = !fps.checked; actions.fps(fps.checked); }, options);
     this.pause.addEventListener('click', actions.pause, options);
-    get('#reset').addEventListener('click', () => { view.value='malo'; actions.reset(); }, options);
+    get('#reset').addEventListener('click', () => { view.value=''; actions.reset(); }, options);
     get('#zoom-in').addEventListener('click', () => actions.zoom(0.8), options);
     get('#zoom-out').addEventListener('click', () => actions.zoom(1.25), options);
     this.canvas.addEventListener('keydown', (event) => {
       if (event.key === '+' || event.key === '=') actions.zoom(0.8);
       if (event.key === '-') actions.zoom(1.25);
-      if (event.key.toLowerCase() === 'r') { view.value='malo'; actions.reset(); }
+      if (event.key.toLowerCase() === 'r') { view.value=''; actions.reset(); }
       const movement: Record<string,[number,number]>={w:[120,0],z:[120,0],s:[-120,0],a:[0,-120],q:[0,-120],d:[0,120]};
       const shift=movement[event.key.toLowerCase()];
-      if(shift) { event.preventDefault(); actions.move(...shift); }
+      if(shift&&actions.exploring()) { event.preventDefault(); actions.move(...shift); }
     }, options);
   }
+  setShipView():void {(document.querySelector('#view-select') as HTMLSelectElement).value='';}
   updatePosition(x: number, z: number): void {
     const dot=document.getElementById('map-camera'); dot?.setAttribute('cx',String(x)); dot?.setAttribute('cy',String(z));
   }

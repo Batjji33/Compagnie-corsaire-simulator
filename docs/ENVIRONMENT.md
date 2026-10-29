@@ -55,4 +55,4 @@ Budget observé en Chromium : environ 37–82 appels de rendu et 39 000–64 000
 
 Build strict et tests phase 0 conservés. Tests du couloir entre ports, connexion terre/eau des cales et absence d’auto-intersection des contours. Quatre vues × trois qualités rendues sans erreur WebGL/JavaScript ; échantillonnage de caméra sur la traversée. Captures contrôlées des ports depuis la mer, des forts et de la vue générale. Carte, commandes, réglages et redimensionnement vérifiés.
 
-Contours anguleux, relief stylisé, architecture modulaire, réflexion sans bâtiments et écume approximative à la résolution de l’atlas. Aucun navire pilotable, propulsion, mission ou marée : la phase 2 n’est pas commencée.
+Contours anguleux, relief stylisé, architecture modulaire, réflexion sans bâtiments et écume approximative à la résolution de l’atlas. Ce document décrit le décor livré en phase 1 ; le navire et sa dynamique ajoutés ensuite sont documentés dans [PILOTING.md](PILOTING.md). Missions et marées restent hors périmètre.

@@ -8,6 +8,9 @@ import { Ocean } from './Ocean';
 import { BayEnvironment } from './BayEnvironment';
 import { BAY, groundHeight, VIEWS } from './geography';
 import type { ViewId } from './geography';
+import { Vessel } from '../ships/Vessel';
+import { VesselCamera } from './VesselCamera';
+import type { CameraMode } from './VesselCamera';
 
 export class World {
   readonly scene = new Scene();
@@ -19,6 +22,8 @@ export class World {
   private quality: Quality;
   private environment: BayEnvironment;
   private lastTarget = new Vector3();
+  readonly vessel:Vessel;
+  readonly vesselCamera:VesselCamera;
   constructor(readonly canvas: HTMLCanvasElement, quality: Quality) {
     const context = canvas.getContext('webgl2', { alpha: false, antialias: false, powerPreference: 'low-power' });
     if (!context) throw new Error('WebGL 2 est indisponible. Vérifiez les mises à jour de Safari/iPadOS ou essayez un navigateur compatible.');
@@ -49,12 +54,17 @@ export class World {
     this.controls.maxDistance = BAY.maxCameraDistance;
     this.controls.minPolarAngle = Math.PI * 0.12;
     this.controls.maxPolarAngle = Math.PI * 0.49;
-    this.resetCamera();
+    this.vessel=new Vessel();this.scene.add(this.vessel.root,this.camera);
+    this.vesselCamera=new VesselCamera(this.camera,this.controls,this.vessel);
   }
   resetCamera(): void {
-    this.setView('malo');
+    this.setCameraMode('external');
+  }
+  setCameraMode(mode:CameraMode):void {
+    this.vesselCamera.setMode(mode);
   }
   setView(id: ViewId): void {
+    this.setCameraMode('explore');
     this.controls.reset();
     this.camera.position.fromArray(VIEWS[id].position);
     this.controls.target.fromArray(VIEWS[id].target);
@@ -62,14 +72,14 @@ export class World {
     this.lastTarget.copy(this.controls.target);
   }
   move(forward: number, right: number): void {
+    if(this.vesselCamera.mode!=='explore')return;
     const direction = this.controls.target.clone().sub(this.camera.position); direction.y=0; direction.normalize();
     const side = new Vector3(-direction.z,0,direction.x);
     const shift=direction.multiplyScalar(forward).addScaledVector(side,right);
     this.camera.position.add(shift); this.controls.target.add(shift);
   }
   zoom(factor: number): void {
-    this.camera.position.sub(this.controls.target).multiplyScalar(factor).clampLength(BAY.minCameraDistance, BAY.maxCameraDistance).add(this.controls.target);
-    this.controls.update();
+    this.vesselCamera.zoom(factor);
   }
   setQuality(quality: Quality): void { this.quality = quality; this.ocean.setQuality(quality); this.environment.setQuality(quality); this.resize(); }
   resize(): void {
@@ -79,20 +89,24 @@ export class World {
     this.camera.aspect = width / Math.max(1, height);
     this.camera.updateProjectionMatrix();
   }
-  render(dt: number, time: number): void {
-    this.controls.update(dt);
+  update(dt:number):void {this.vessel.update(dt);}
+  render(dt: number, time: number, alpha=1): void {
+    this.vessel.render(time,alpha);
+    if(this.vesselCamera.mode==='explore') {
+      this.controls.update(dt);
     this.lastTarget.copy(this.controls.target);
     this.controls.target.x=Math.max(BAY.minX+500,Math.min(BAY.maxX-500,this.controls.target.x));
     this.controls.target.z=Math.max(BAY.minZ+500,Math.min(BAY.maxZ-500,this.controls.target.z));
     this.lastTarget.subVectors(this.controls.target,this.lastTarget);
     this.camera.position.add(this.lastTarget);
     this.camera.position.y=Math.max(groundHeight(this.camera.position.x,this.camera.position.z)+8,this.camera.position.y);
+    } else this.vesselCamera.update(dt);
     this.environment.update(this.camera.position,time);
     this.ocean.update(time, this.camera.position);
     this.renderer.render(this.scene, this.camera);
   }
   dispose(): void {
-    this.controls.dispose(); this.ocean.dispose(); this.environment.dispose();
+    this.controls.dispose(); this.ocean.dispose(); this.environment.dispose(); this.vessel.dispose();
     this.sky.geometry.dispose(); this.sky.material.dispose(); this.renderer.dispose();
   }
 }

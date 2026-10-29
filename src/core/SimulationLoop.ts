@@ -8,10 +8,11 @@ export class SimulationLoop {
   private lastRender = 0;
   private running = false;
   private visualTime = 0;
+  private interpolation = 0;
   paused = false;
   fps: number = 30;
   constructor(private update: (dt: number, time: number) => void,
-    private render: (dt: number, time: number) => void, private onError: (error: unknown) => void) {}
+    private render: (dt: number, time: number, alpha: number) => void, private onError: (error: unknown) => void) {}
   start(): void {
     if (this.running) return;
     this.running = true;
@@ -26,10 +27,10 @@ export class SimulationLoop {
       const dt = (now - this.previous) / 1000;
       this.previous = now;
       const alpha = this.paused ? 0 : this.clock.advance(dt, this.update);
-      if (!this.paused) this.visualTime = this.clock.time + alpha * this.clock.step;
+      if (!this.paused) { this.visualTime = this.clock.time + alpha * this.clock.step; this.interpolation = alpha; }
       const interval = 1000 / this.fps;
       if (now - this.lastRender >= interval - 0.5) {
-        this.render(Math.min((now - this.lastRender) / 1000, 0.1), this.visualTime);
+        this.render(Math.min((now - this.lastRender) / 1000, 0.1), this.visualTime, this.interpolation);
         this.lastRender = now - ((now - this.lastRender) % interval);
       }
       this.id = requestAnimationFrame(this.tick);

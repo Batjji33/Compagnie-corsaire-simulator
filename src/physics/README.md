@@ -1,2 +1,5 @@
-# Physique (réservé)
-Les systèmes exposeront `update(dt, time)` et seront appelés par la boucle à 60 Hz, indépendamment du rendu. Unités : mètres, secondes, radians ; Y vertical, nord conventionnel vers -Z. L’état précédent et courant permettront l’interpolation visuelle. Aucune dynamique maritime implémentée en phase 0.
+# Physique maritime simplifiée
+
+`VesselDynamics.ts` calcule avance, dérive et lacet à 60 Hz. Unités : mètres, secondes, radians, newtons ; Y vertical, nord vers −Z, cap positif vers tribord. Les états précédent/courant sont conservés pour interpolation, sans mutation par le rendu.
+
+`ShoreContact.ts` apporte des forces de contact amorties aux côtes et quais simplifiés. Aucun DOM ou renderer dans ces modules. Les paramètres sont dans `ships/parameters.ts` ; voir [le modèle et ses limites](../../docs/PILOTING.md).

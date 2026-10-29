@@ -1,6 +1,8 @@
-# Compagnie Corsaire Simulator — phase 1
+# Compagnie Corsaire Simulator — pilotage
 
 Simulateur maritime web local : fondations de la phase 0 et environnement simplifié Saint-Malo–Dinard. Scène procédurale sans ressource distante, sans API ni service payant. Développement sur `develop`. Voir [le dossier environnement](docs/ENVIRONMENT.md) pour les sources, les choix fictifs, les budgets et les limites.
+
+Le Corsaire d’Émeraude est désormais pilotable : deux moteurs indépendants, barre progressive, inertie, marche arrière, contacts simples et caméras extérieure/cockpit. Voir [les commandes, références et paramètres de pilotage](docs/PILOTING.md). Les fonctionnalités d’exploration de la baie sont conservées.
 
 ## Démarrer
 
@@ -24,12 +26,14 @@ npm run preview
 
 ## Commandes
 
+Au départ, monter les deux manettes progressivement. Flèches haut/bas : moteurs ensemble ; Q/A : bâbord ; E/D : tribord ; gauche/droite : barre ; X : au milieu ; Espace : neutre ; C : caméra. Les commandes restent en position après relâchement. Le neutre laisse le bateau sur son erre. Les commandes ci-dessous restent disponibles pour la caméra et l’exploration.
+
 - Glisser un doigt ou le bouton gauche de la souris : tourner la caméra.
 - Pincer à deux doigts, utiliser la molette ou les boutons +/− : zoomer.
 - Glisser à deux doigts ou au bouton droit : déplacer la caméra. Maintenir les flèches tactiles pour avancer, reculer ou se déplacer latéralement.
 - Sélectionner Saint-Malo, Dinard, toute la baie ou les forts ; ouvrir Carte pour les repères et le tracé schématique.
-- Recentrer : revenir à la vue initiale.
-- Clavier, après focus sur la scène : flèches pour tourner, WASD/ZQSD pour déplacer, +/− pour zoomer, R pour recentrer.
+- Recentrer : revenir à la vue extérieure du navire sans déplacer le bateau.
+- En exploration libre, après focus sur la scène : flèches pour tourner, WASD/ZQSD pour déplacer, +/− pour zoomer, R pour revenir au bateau.
 - Pause : arrêter la mer tout en conservant la caméra libre.
 - Réglages : qualité graphique et compteur FPS réel, enregistrés localement si le stockage est disponible.
 
@@ -66,6 +70,6 @@ Build TypeScript strict + Vite et deux tests d’horloge validés. Démarrage HT
 
 Direction d’interface : Data terminal (seed 1752588026), sans nouveau tirage. Surfaces neutres, police système locale, accent émeraude limité aux commandes ; la mer reste l’élément dominant. La question de l’écran est « puis-je explorer l’environnement maritime ? ». L’avertissement de l’inspecteur sur la proportion de couleur est accepté : il mesure la mer 3D elle-même. Aucun chiffre de navigation ni donnée météo réelle n’est inventé.
 
-La phase 1 ajoute le littoral interprété, les monuments et les cales. Elle ne contient pas de modèle du Corsaire d’Émeraude, de propulsion, flottabilité, collisions physiques, missions ou audio. Les vagues et profondeurs sont visuelles. Les futures sauvegardes de partie sont distinctes des préférences actuelles. Cinq tests automatisés couvrent désormais l’horloge et les données géographiques.
+Le littoral, les monuments et les cales accompagnent désormais le navire pilotable. Les vagues et profondeurs restent visuelles ; les coefficients de comportement sont calibrés pour le jeu. Seize tests couvrent horloge, géographie et dynamique. Aucun système de missions, d’amarrage automatique ou d’audio ajouté. Les futures sauvegardes de partie restent distinctes des préférences actuelles.
 
 Références techniques : [Vite](https://vite.dev/guide/), [Three.js](https://threejs.org/docs/).

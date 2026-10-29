@@ -12,8 +12,9 @@ export function bayMapMarkup(): string {
       <text x="-900" y="-1700">Les Bé</text><text x="950" y="-1600">Fort National</text>
       <text x="-3700" y="-2800">N ↑</text>
       <circle id="map-camera" cx="0" cy="0" r="90"/>
+      <path id="map-vessel" d="M0 -120 L75 100 L0 65 L-75 100 Z" fill="#83e3bd" stroke="#172c31" stroke-width="20"/>
     </svg>
-    <p>Point blanc : caméra · Cales en ocre</p>
+    <p>Triangle vert : navire · Point blanc : caméra · Cales en ocre</p>
     <p>Côtes interprétées. Chenal, balises et hauts-fonds fictifs. Carte non navigable.</p>
   </aside>`;
 }
