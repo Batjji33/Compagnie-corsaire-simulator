@@ -4,11 +4,12 @@ import { BOAT } from '../ships/parameters.ts';
 import type { ExternalForce, VesselState } from './VesselDynamics.ts';
 
 interface Obstacle {name:string;polygon:readonly Point[]}
-/** Soft hull contacts, no damage/scoring/mooring. Shapes match visible coast and quays. */
+/** Hull contacts shared by physics and radar; damage is handled by Marine. */
 export class ShoreContact {
-  private obstacles:Obstacle[]=[];
+  readonly obstacles:Obstacle[]=[];
   private result:ExternalForce={x:0,z:0,yaw:0};
   label='';
+  impactSpeed=0;
   constructor() {
     for(const land of LANDS) {
       const center=land.outline.reduce((sum,p)=>[sum[0]+p[0]/land.outline.length,sum[1]+p[1]/land.outline.length],[0,0]);
@@ -27,7 +28,7 @@ export class ShoreContact {
   }
   private rectangle(name:string,x:number,z:number,w:number,d:number) {this.obstacles.push({name,polygon:[[x-w/2,z-d/2],[x+w/2,z-d/2],[x+w/2,z+d/2],[x-w/2,z+d/2]]});}
   evaluate(s:VesselState):ExternalForce {
-    this.result.x=this.result.z=this.result.yaw=0;this.label='';
+    this.result.x=this.result.z=this.result.yaw=0;this.label='';this.impactSpeed=0;
     const sin=Math.sin(s.heading),cos=Math.cos(s.heading),radius=BOAT.beam/2;
     for(const forward of [-9,0,9]) {
       const x=s.x+sin*forward,z=s.z-cos*forward;
@@ -50,6 +51,7 @@ export class ShoreContact {
       if(penetration>0) {
         const vx=sin*s.surge+cos*(s.sway+s.yawRate*forward),vz=-cos*s.surge+sin*(s.sway+s.yawRate*forward);
         const normalVelocity=vx*nx+vz*nz;
+        this.impactSpeed=Math.max(this.impactSpeed,-normalVelocity);
         const force=Math.max(0,BOAT.contact.stiffness*penetration-BOAT.contact.damping*normalVelocity);
         const fx=nx*force-(vx-nx*normalVelocity)*BOAT.contact.friction,fz=nz*force-(vz-nz*normalVelocity)*BOAT.contact.friction;
         this.result.x+=fx;this.result.z+=fz;this.result.yaw+=forward*(cos*fx+sin*fz);this.label=label;

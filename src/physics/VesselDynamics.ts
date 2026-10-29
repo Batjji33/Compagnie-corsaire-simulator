@@ -8,6 +8,7 @@ interface Engine { value: number; gear: number; neutral: number }
 export interface ExternalForce { x:number; z:number; yaw:number }
 /** Planar body-axis dynamics: surge forward, sway starboard, heading clockwise from north. */
 export class VesselDynamics {
+  powerFactor=1;
   readonly command: HelmCommand = { port: 0, starboard: 0, rudder: 0 };
   readonly state: VesselState;
   readonly previous: VesselState;
@@ -41,7 +42,7 @@ export class VesselDynamics {
     const target=this.command.rudder*BOAT.rudderMaxDegrees*Math.PI/180;
     const rudderStep=BOAT.rudderRateDegrees*Math.PI/180*dt;
     s.rudder+=clamp(target-s.rudder,-rudderStep,rudderStep);
-    const thrust=(lever:number)=>BOAT.engineThrust*lever*(lever<0?BOAT.reverseEfficiency:1);
+    const thrust=(lever:number)=>BOAT.engineThrust*this.powerFactor*lever*(lever<0?BOAT.reverseEfficiency:1);
     const port=thrust(s.port),starboard=thrust(s.starboard),speed=BOAT.maxSpeedKnots*KNOT;
     const dragForward=(2*BOAT.engineThrust-BOAT.surgeLinearDrag*speed)/(speed*speed);
     const dragReverse=(2*BOAT.engineThrust*BOAT.reverseEfficiency-BOAT.surgeLinearDrag*BOAT.reverseMaxSpeed)/(BOAT.reverseMaxSpeed**2);

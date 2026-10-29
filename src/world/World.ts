@@ -18,6 +18,7 @@ export class World {
   readonly renderer: WebGLRenderer;
   readonly controls: OrbitControls;
   private ocean: Ocean;
+  private daylight=createDaylight();
   private sky = new Sky();
   private quality: Quality;
   private environment: BayEnvironment;
@@ -32,7 +33,7 @@ export class World {
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.85;
-    const daylight = createDaylight();
+    const daylight = this.daylight;
     this.scene.add(daylight.sun, daylight.ambient);
     this.scene.fog = daylight.fog;
     this.sky.scale.setScalar(15000);
@@ -92,6 +93,20 @@ export class World {
   update(dt:number):void {this.vessel.update(dt);}
   render(dt: number, time: number, alpha=1): void {
     this.vessel.render(time,alpha);
+    const m=this.vessel.marine,light=m.daylight;
+    this.daylight.sun.intensity=2.4*light;this.daylight.ambient.intensity=.65+1.05*light;
+    const angle=(m.hour-6)/24*Math.PI*2;
+    sunDirection.set(Math.cos(angle),Math.sin(angle),.3).normalize();
+    this.daylight.sun.position.copy(sunDirection).multiplyScalar(1000);
+    this.sky.material.uniforms.sunPosition.value.copy(sunDirection);
+    this.daylight.fog.color.setRGB(.035+.42*light,.045+.54*light,.07+.57*light);
+    this.daylight.fog.near=m.visibility*.12;this.daylight.fog.far=m.visibility;
+    this.ocean.material.uniforms.uFog.value.copy(this.daylight.fog.color);
+    this.ocean.material.uniforms.uFogNear.value=this.daylight.fog.near;
+    this.ocean.material.uniforms.uFogFar.value=m.visibility;
+    this.ocean.material.uniforms.uAmplitude.value=m.waves/3;
+    this.ocean.material.uniforms.uLight.value=light;
+    this.renderer.toneMappingExposure=.55+.30*light;
     if(this.vesselCamera.mode==='explore') {
       this.controls.update(dt);
     this.lastTarget.copy(this.controls.target);
@@ -103,6 +118,7 @@ export class World {
     } else this.vesselCamera.update(dt);
     this.environment.update(this.camera.position,time);
     this.ocean.update(time, this.camera.position);
+    this.ocean.mesh.position.y=m.tide;
     this.renderer.render(this.scene, this.camera);
   }
   dispose(): void {

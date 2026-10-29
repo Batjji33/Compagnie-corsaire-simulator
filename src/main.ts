@@ -1,4 +1,5 @@
 import './style.css';
+import { MarinePanel } from './ui/MarinePanel';
 import { CONFIG } from './config';
 import { SimulationLoop } from './core/SimulationLoop';
 import { showError } from './core/errors';
@@ -32,8 +33,10 @@ try {
   });
   world = new World(ui.canvas, settings.quality);
   helm=new HelmControls(world.vessel.dynamics,(mode)=>{world.setCameraMode(mode);ui.setShipView();helm.refresh();},()=>world.vesselCamera.mode);
+  const marinePanel=new MarinePanel(world.vessel);
   loop = new SimulationLoop((dt) => {helm.update(dt);world.update(dt);}, (dt, time, alpha) => {
     world.render(dt, time, alpha);
+    marinePanel.update(dt,loop.paused);
     const fps = meter.sample(performance.now());
     if (settings.showFps && fps !== null) ui.fps.textContent = `${fps} FPS`;
     if (fps !== null) {ui.updatePosition(world.camera.position.x,world.camera.position.z);helm.refresh();}
@@ -73,6 +76,6 @@ try {
   world.resize();
   ui.status.textContent = 'En conduite · Deux moteurs';
   loop.start();
-  dispose = () => { loop.stop(); observer.disconnect(); abort.abort(); helm.dispose(); ui.dispose(); world.dispose(); };
+  dispose = () => { loop.stop(); observer.disconnect(); abort.abort(); marinePanel.dispose(); helm.dispose(); ui.dispose(); world.dispose(); };
 } catch (error) { showError(error); }
 if (import.meta.hot) import.meta.hot.dispose(() => dispose?.());

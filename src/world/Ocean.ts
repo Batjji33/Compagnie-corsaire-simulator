@@ -7,7 +7,7 @@ import { createCoastAtlas } from './CoastAtlas';
 export class Ocean {
   private coast = createCoastAtlas();
   readonly material = new ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uAmplitude: { value: CONFIG.sea.amplitude },
+    uniforms: { uLight: { value: 1 }, uTime: { value: 0 }, uAmplitude: { value: CONFIG.sea.amplitude },
       uSun: { value: sunDirection }, uFog: { value: new Color(0xb5cbd1) },
       uFogNear: { value: CONFIG.weather.fogNear }, uFogFar: { value: CONFIG.weather.fogFar },
       uCoast: { value: this.coast.texture }, uBounds: { value: this.coast.bounds } },
@@ -24,6 +24,7 @@ export class Ocean {
       }`,
     fragmentShader: `
       uniform float uTime;
+      uniform float uLight;
       uniform vec3 uSun;
       uniform vec3 uFog;
       uniform float uFogNear;
@@ -58,6 +59,7 @@ export class Ocean {
         float foamBand = (1.-smoothstep(.015,.13,coast.r))*smoothstep(.0,.018,coast.r)*(1.-coast.g)*inMap;
         float foam = foamBand*(.3+.7*pow(.5+.5*sin(p.x*.24+p.y*.33-uTime*1.6),3.));
         water = mix(water,vec3(.75,.82,.77),foam*.45);
+        water *= .18+.82*uLight;
         water = mix(water, uFog, smoothstep(uFogNear,uFogFar,distanceToEye));
         gl_FragColor = vec4(water, 1.0);
         #include <tonemapping_fragment>

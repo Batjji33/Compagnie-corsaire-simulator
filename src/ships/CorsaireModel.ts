@@ -102,10 +102,10 @@ export class CorsaireModel {
   }
   setCockpit(active:boolean):void {this.bridge.visible=!active;this.cockpit.visible=active;}
   updateWheel(rudder:number):void {this.wheel.rotation.z=-rudder*4;}
-  updateInstruments(state:VesselState):void {
+  updateInstruments(state:VesselState,powerFactor=1):void {
     const lines=[
-      [`${(state.surge/KNOT).toFixed(1)} nd`,`Cap ${Math.round((state.heading*180/Math.PI%360+360)%360)%360}°`],
-      [`Barre ${Math.round(state.rudder*180/Math.PI)}°`,`B ${Math.round(state.port*100)} / T ${Math.round(state.starboard*100)} %`],
+      [`${(Math.hypot(state.surge,state.sway)/KNOT).toFixed(1)} nd`,`Cap ${Math.round((state.heading*180/Math.PI%360+360)%360)%360}°`],
+      [`Barre ${Math.round(state.rudder*180/Math.PI)}°`,`B ${Math.round(state.port*100*powerFactor)} / T ${Math.round(state.starboard*100*powerFactor)} %`],
     ];
     this.displays.forEach((display,index)=>{
       const text=lines[index].join('|');if(display.text===text)return;display.text=text;
