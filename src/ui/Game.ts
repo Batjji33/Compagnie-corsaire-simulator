@@ -40,7 +40,7 @@ export class Game {
     this.menuButton.addEventListener('click',()=>this.show('home'),options);
     this.hud.id='mission-hud';this.hud.hidden=true;this.hud.setAttribute('aria-label','Objectif de mission');
     this.hud.innerHTML='<div class="objective-top"><strong id="objective-phase"></strong><span id="objective-time"></span></div><p id="objective-comment"></p><p id="objective-guidance"></p><div class="objective-actions"><button id="mission-action"></button><button id="mission-details" aria-expanded="false">Étapes</button></div><ol id="objective-steps" hidden></ol>';
-    document.querySelector('.viewport')!.append(this.hud);
+    document.querySelector('.helm-center')!.append(this.hud);
     this.hud.querySelector('#mission-action')!.addEventListener('click',()=>this.action(),options);
     this.hud.querySelector('#mission-details')!.addEventListener('click',()=>{const steps=this.hud.querySelector<HTMLElement>('#objective-steps')!;steps.hidden=!steps.hidden;this.hud.querySelector('#mission-details')!.setAttribute('aria-expanded',String(!steps.hidden));},options);
     this.dialog.addEventListener('click',e=>{

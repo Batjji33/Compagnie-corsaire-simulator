@@ -12,6 +12,7 @@ export class HelmControls {
   private port:HTMLInputElement;
   private starboard:HTMLInputElement;
   private rudder:HTMLInputElement;
+  private help:HTMLDetailsElement;
   private elapsed=0;
   constructor(private dynamics:VesselDynamics,private camera:(mode:CameraMode)=>void,private mode:()=>CameraMode) {
     this.panel=document.createElement('section');this.panel.className='helm';this.panel.setAttribute('aria-label','Poste de conduite du Corsaire d’Émeraude');
@@ -19,8 +20,15 @@ export class HelmControls {
       <div class="helm-instruments"><strong>Corsaire d’Émeraude</strong><div class="readings"><span>Vitesse fond<strong id="ship-speed">0,0 nd</strong></span><span>Cap<strong id="ship-heading">270°</strong></span></div><p id="berth-distance">Cale de Dinan</p><div class="ship-cameras"><button id="camera-external" aria-pressed="true">Extérieur</button><button id="camera-cockpit" aria-pressed="false">Cockpit</button></div></div>
       <div class="engine-control"><label for="engine-port">Bâbord <output id="port-command">N</output></label><div class="lever"><span>AV</span><input id="engine-port" type="range" min="-100" max="100" step="1" value="0" aria-label="Propulsion bâbord" orient="vertical"/><span>AR</span></div><button id="port-neutral" aria-label="Moteur bâbord au neutre">Neutre</button><small id="port-actual">Poussée 0 %</small></div>
       <div class="engine-control"><label for="engine-starboard">Tribord <output id="starboard-command">N</output></label><div class="lever"><span>AV</span><input id="engine-starboard" type="range" min="-100" max="100" step="1" value="0" aria-label="Propulsion tribord" orient="vertical"/><span>AR</span></div><button id="starboard-neutral" aria-label="Moteur tribord au neutre">Neutre</button><small id="starboard-actual">Poussée 0 %</small></div>
-      <div class="rudder-control"><div class="rudder-title"><label for="rudder">Barre</label><output id="rudder-angle">0°</output></div><input id="rudder" type="range" min="-35" max="35" step="1" value="0" aria-label="Angle de barre"/><div class="rudder-scale"><span>35° bâbord</span><span>35° tribord</span></div><div class="helm-actions"><button id="rudder-center">Au milieu</button><button id="all-neutral">Deux moteurs au neutre</button></div><details><summary>Clavier et manœuvre</summary><p>↑ / ↓ : deux moteurs · Q / A : bâbord · E / D : tribord · ← / → : barre · X : barre au milieu · Espace : neutre · C : caméra. Le neutre ne freine pas instantanément ; inversez progressivement pour ralentir.</p></details></div>`;
+      <div class="rudder-control"><div class="rudder-title"><label for="rudder">Barre</label><output id="rudder-angle">0°</output></div><input id="rudder" type="range" min="-35" max="35" step="1" value="0" aria-label="Angle de barre"/><div class="rudder-scale"><span>35° bâbord</span><span>35° tribord</span></div><div class="helm-actions"><button id="rudder-center">Au milieu</button><button id="all-neutral" aria-label="Deux moteurs au neutre">Deux au neutre</button></div><details><summary>Clavier et manœuvre</summary><p>↑ / ↓ : deux moteurs · Q / A : bâbord · E / D : tribord · ← / → : barre · X : barre au milieu · Espace : neutre · C : caméra. Le neutre ne freine pas instantanément ; inversez progressivement pour ralentir.</p></details></div>`;
+    const engines=document.createElement('div');engines.className='helm-engines';engines.setAttribute('role','group');engines.setAttribute('aria-label','Propulsion des deux moteurs');
+    engines.append(...this.panel.querySelectorAll('.engine-control'));
+    const center=document.createElement('div');center.className='helm-center';
+    center.append(this.panel.querySelector('.helm-instruments')!);
+    this.panel.prepend(engines,center);
     const app=document.querySelector('#app')!;app.classList.add('piloting');app.insertBefore(this.panel,app.querySelector('footer'));
+    this.help=this.panel.querySelector<HTMLDetailsElement>('details')!;this.help.className='helm-help';
+    app.querySelector('footer')!.insertBefore(this.help,app.querySelector('#pause'));
     const get=<T extends HTMLElement>(id:string)=>this.panel.querySelector<T>(`#${id}`)!;
     this.port=get('engine-port');this.starboard=get('engine-starboard');this.rudder=get('rudder');
     const options={signal:this.abort.signal};
@@ -80,7 +88,7 @@ export class HelmControls {
   setEnabled(enabled:boolean):void {
     if(this.enabled===enabled)return;
     this.enabled=enabled;this.clearKeys();
-    this.panel.querySelectorAll<HTMLInputElement|HTMLButtonElement>('input,button:not([id^="camera-"])').forEach(el=>{el.disabled=!enabled;});
+    this.panel.querySelectorAll<HTMLInputElement|HTMLButtonElement>('input,.helm-engines button,.rudder-control button').forEach(el=>{el.disabled=!enabled;});
   }
-  dispose():void {this.abort.abort();this.panel.remove();}
+  dispose():void {this.abort.abort();this.panel.remove();this.help.remove();}
 }

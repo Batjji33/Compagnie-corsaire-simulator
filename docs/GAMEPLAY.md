@@ -6,7 +6,10 @@ Le menu principal propose **Navigation libre**, **Missions**, **Paramètres** et
 **Progression et statistiques locales**. **Menu** et **Pause** suspendent la
 simulation. **Reprendre la partie** permet de revenir au pilotage. Le menu est
 utilisable au doigt, avec défilement sur les écrans courts et des boutons d'au moins
-44 px. Les commandes de propulsion existantes restent au-dessous de la vue 3D.
+44 px. Le poste de commande compact reste sous la vue 3D : moteurs à gauche,
+vitesse, cap et suivi de mission au centre, barre à droite. Les étapes détaillées
+se déroulent dans ce poste et ne recouvrent pas la mer. L'aide clavier se trouve
+dans le pied de page, à côté de Pause.
 
 En mode libre, choisir la mer, l'heure, la direction du vent et les dégâts, puis
 **Prendre la barre**. Les réglages détaillés restent accessibles pendant la conduite.
