@@ -19,6 +19,8 @@ export class Immersion {
   private caption=document.createElement('p');
   private notice=document.createElement('details');
   private saveTimer:ReturnType<typeof setTimeout>|undefined;
+  private announcementSeconds=0;
+  private pendingNarration:string|undefined;
   constructor(private world:World,private store:GameStore,open:()=>void){
     const options={signal:this.abort.signal},prefs=store.data.immersion;
     this.guide.comments=structuredClone(prefs.comments);this.guide.automatic=prefs.automatic;this.guide.manual=prefs.manual;this.guide.muted=prefs.muted;
@@ -55,8 +57,8 @@ export class Immersion {
     get('tour-play').addEventListener('click',()=>{
       const c=this.guide.choose(get<HTMLSelectElement>('tour-select').value);if(c){this.showComment(c);if(!this.guide.muted)this.audio.speak(c.text,true);this.render();}
     },options);
-    get('tour-stop').addEventListener('click',()=>{this.audio.stopSpeech();this.render();},options);
-    get('tour-dismiss').addEventListener('click',()=>{this.audio.stopSpeech();this.guide.dismiss();this.notice.hidden=true;this.notice.open=false;this.render();},options);
+    get('tour-stop').addEventListener('click',()=>{this.pendingNarration=undefined;this.audio.stopSpeech();this.render();},options);
+    get('tour-dismiss').addEventListener('click',()=>{this.pendingNarration=undefined;this.audio.stopSpeech();this.guide.dismiss();this.notice.hidden=true;this.notice.open=false;this.render();},options);
     get('tour-save').addEventListener('click',()=>this.saveComment(),options);
     get('tour-new').addEventListener('click',()=>{
       const select=get<HTMLSelectElement>('tour-select'),option=document.createElement('option');option.value='new';option.textContent='Nouveau commentaire';select.append(option);select.value='new';
@@ -121,10 +123,13 @@ export class Immersion {
     clearTimeout(this.saveTimer);this.saveTimer=setTimeout(()=>{void this.store.save();},250);
   }
   setPaused(paused:boolean):void {clearTimeout(this.hornClickTimer);this.audio.setPaused(paused);this.hornButton.disabled=paused;this.hornButton.setAttribute('aria-pressed','false');}
-  reset(visited:string[]=[]):void {this.guide.reset();this.guide.visited=new Set(visited.filter(id=>this.guide.comments.some(c=>c.id===id)));this.caption.textContent='';this.notice.hidden=true;this.notice.open=false;}
+  reset(visited:string[]=[]):void {this.audio.stopSpeech();this.pendingNarration=undefined;this.announcementSeconds=0;this.guide.reset();this.guide.visited=new Set(visited.filter(id=>this.guide.comments.some(c=>c.id===id)));this.caption.textContent='';this.notice.hidden=true;this.notice.open=false;}
+  announce(text:string):void {if(!this.guide.muted)this.announcementSeconds=this.audio.speak(text)?Math.min(20,Math.max(3,text.length/12+1)):0;}
   update(dt:number):void {
+    this.announcementSeconds=Math.max(0,this.announcementSeconds-dt);
     const s=this.world.vessel.dynamics.state,c=this.guide.update(dt,s.x,s.z);
-    if(c){this.showComment(c);if(!this.guide.manual&&!this.guide.muted)this.audio.speak(c.text);}
+    if(c){this.showComment(c);if(!this.guide.manual&&!this.guide.muted){if(this.announcementSeconds>0)this.pendingNarration=c.text;else this.audio.speak(c.text);}}
+    if(this.pendingNarration&&this.announcementSeconds===0){if(!this.guide.manual&&!this.guide.muted)this.audio.speak(this.pendingNarration);this.pendingNarration=undefined;}
   }
   private showComment(c:TourComment):void {this.caption.textContent=c.text;this.notice.querySelector('#tour-notice-title')!.textContent=c.title;this.notice.hidden=false;}
   render():void {

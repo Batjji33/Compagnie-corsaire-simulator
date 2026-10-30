@@ -184,6 +184,7 @@ kbd { font: inherit; color: var(--muted); margin-left: auto; }
 #objective-comment { line-height: 1.6; color: var(--muted); }
 #objective-steps { padding-left: 20px; margin: 10px 0 0; columns: 2; color: var(--muted); line-height: 1.8; }
 #objective-steps [aria-current] { color: var(--accent); }
+#service-end { margin-top: 12px; min-height: 44px; font-size: 12px; background: transparent; }
 
 /* The old full-width footer becomes two small floating groups. */
 footer { z-index: 4; inset: auto var(--right) var(--bottom) var(--left); display: flex; align-items: end; gap: 16px; }

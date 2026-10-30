@@ -12,6 +12,7 @@ export interface MissionResult {
   punctuality:number;safety:number;comfort:number;manoeuvres:number;score:number;
   grade:string;reason:string;metrics:MissionMetrics;finishedAt:string;
   playedSeconds:number;
+  routeTitle?:string;
 }
 export interface MissionSnapshot {
   runId:string;phase:MissionPhase;elapsed:number;phaseTime:number;released:boolean;hold:number;
@@ -34,7 +35,9 @@ export class Mission {
   private previousSpeed:number|undefined;
   private previousPosition:{x:number;z:number}|undefined;
   private previousDamage:number|undefined;
-  constructor(definition:MissionDefinition,snapshot?:MissionSnapshot){
+  private continuous:boolean;
+  constructor(definition:MissionDefinition,snapshot?:MissionSnapshot,continuous=false){
+    this.continuous=continuous;
     this.definition=definition;
     this.state=snapshot?structuredClone(snapshot):{
       runId:globalThis.crypto?.randomUUID?.()??`run-${Date.now()}-${Math.random()}`,phase:'preparation',elapsed:0,phaseTime:0,released:false,hold:0,
@@ -69,10 +72,12 @@ export class Mission {
       this.lastContact=contact;
     }
     this.previousPosition={x:t.x,z:t.z};this.previousSpeed=t.speed;this.previousDamage=t.damage;
-    if(t.damage>=d.rules.maxDamage){this.fail('Coque trop endommagée pour transporter les passagers.');return;}
-    if(s.groundedSeconds>d.rules.maxGroundedSeconds){this.fail('Échouement prolongé : assistance nécessaire.');return;}
-    if(s.elapsed>d.maxSeconds+s.metrics.recoveries*300){this.fail('Temps maximal de mission dépassé. Reprenez au point sûr pour disposer de 5 minutes supplémentaires.');return;}
-    if(Math.abs(t.x)>5200||Math.abs(t.z)>5200){this.fail('Le navire a quitté la zone de jeu.');return;}
+    if(!this.continuous){
+      if(t.damage>=d.rules.maxDamage){this.fail('Coque trop endommagée pour transporter les passagers.');return;}
+      if(s.groundedSeconds>d.rules.maxGroundedSeconds){this.fail('Échouement prolongé : assistance nécessaire.');return;}
+      if(s.elapsed>d.maxSeconds+s.metrics.recoveries*300){this.fail('Temps maximal de mission dépassé. Reprenez au point sûr pour disposer de 5 minutes supplémentaires.');return;}
+      if(Math.abs(t.x)>5200||Math.abs(t.z)>5200){this.fail('Le navire a quitté la zone de jeu.');return;}
+    }
     switch(this.phase){
       case 'boarding':if(s.phaseTime>=d.boardingSeconds)this.enter('departure');break;
       case 'departure':if(s.released&&Math.hypot(t.x-d.origin.berth.x,t.z-d.origin.berth.z)>=d.origin.exitDistance)this.enter('crossing');break;
@@ -96,12 +101,12 @@ export class Mission {
   }
   makeResult(completed:boolean,reason:string):MissionResult {
     const s=this.state,m=s.metrics;
-    const punctuality=Math.round(clamp(100-Math.max(0,s.elapsed-this.definition.targetSeconds)/3,0,100));
+    const punctuality=this.continuous?100:Math.round(clamp(100-Math.max(0,s.elapsed-this.definition.targetSeconds)/3,0,100));
     const safety=Math.round(clamp(100-m.contacts*12-m.impactDamage*80-m.unsafeSeconds*.5-s.groundedSeconds*2,0,100));
     const comfort=Math.round(clamp(100-m.discomfort*2,0,100));
     const manoeuvres=Math.round(clamp(100-m.contacts*8-m.recoveries*15,0,100));
     const score=completed?Math.round(punctuality*.2+safety*.35+comfort*.2+manoeuvres*.25):0;
-    return {runId:s.runId,missionId:this.definition.id,completed,elapsed:s.elapsed,passengers:completed?this.definition.passengers:0,
+    return {runId:s.runId,missionId:this.definition.id,routeTitle:this.definition.title,completed,elapsed:s.elapsed,passengers:completed?this.definition.passengers:0,
       punctuality,safety,comfort,manoeuvres,score,grade:!completed?'Interrompue':score>=90?'Excellent':score>=75?'Très bien':score>=55?'Validée':'À améliorer',reason,metrics:structuredClone(m),finishedAt:new Date().toISOString(),playedSeconds:Math.max(0,s.elapsed-(s.accountedSeconds??0))};
   }
 }

@@ -2,7 +2,7 @@
 
 Jeu maritime web local dans une baie Saint-Malo–Dinard simplifiée : navigation libre, mission de transport de passagers, météo évolutive, trafic autonome et excursions commentées. Scène procédurale sans ressource distante, sans API ni service payant. Développement sur `develop`. Voir [le dossier environnement](docs/ENVIRONMENT.md) pour les sources, les choix fictifs, les budgets et les limites.
 
-Le Corsaire d’Émeraude est pilotable avec deux moteurs indépendants, barre progressive, inertie, marche arrière et caméras extérieure/cockpit. Le menu propose la navigation libre et une mission complète Saint-Malo–Dinard, de l’embarquement au bilan, avec progression et paramètres dans IndexedDB. Voir [le guide du jeu](docs/GAMEPLAY.md), [les conditions maritimes](docs/MARITIME.md) et [les commandes de pilotage](docs/PILOTING.md).
+Le Corsaire d’Émeraude est pilotable avec deux moteurs indépendants, barre progressive, inertie, marche arrière et caméras extérieure/cockpit. Le menu propose la navigation libre et un service continu Saint-Malo ↔ Dinard : rotations illimitées, voyageurs renouvelés, départs manuels et bilan à la fin du service. Progression, service en cours et paramètres sont conservés dans IndexedDB. Voir [le guide du jeu](docs/GAMEPLAY.md), [les conditions maritimes](docs/MARITIME.md) et [les commandes de pilotage](docs/PILOTING.md).
 
 La phase 5 ajoute voiliers, plaisance, ferries et vedettes avec évitements et échos
 radar, une foule 3D instanciée suivant les étapes de mission, la satisfaction des

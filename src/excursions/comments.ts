@@ -22,14 +22,22 @@ export class TourGuide {
   comments:TourComment[]=structuredClone(DEFAULT_COMMENTS);selected:TourComment|undefined;
   visited=new Set<string>();automatic=true;manual=true;muted=false;private cooldown=0;
   private selectedSeconds=0;private acknowledged=false;
+  destination:'malo'|'dinard'|undefined;
+  private contextual(comment:TourComment):TourComment {
+    // Leave custom and edited comments intact; only adapt the authored directional introductions.
+    if(this.destination!=='malo'||!DEFAULT_COMMENTS.some(c=>c.id===comment.id&&c.text===comment.text))return comment;
+    const text=comment.text.replace('Bienvenue à bord.','Nous approchons de Saint-Malo.')
+      .replace('À l’approche de Dinard,','En quittant Dinard,').replace('Nous voici près du Clair de Lune.','Nous quittons le Clair de Lune en direction de Saint-Malo.');
+    return {...comment,text};
+  }
   update(dt:number,x:number,z:number):TourComment|undefined {
     this.cooldown=Math.max(0,this.cooldown-dt);
     if(this.selected){this.selectedSeconds+=dt;if((!this.manual||this.acknowledged)&&this.selectedSeconds>Math.max(20,this.selected.text.length/10))this.dismiss();}
     if(!this.automatic||this.muted||this.cooldown>0||this.selected)return;
     const next=this.comments.filter(c=>!this.visited.has(c.id)&&Math.hypot(c.x-x,c.z-z)<=c.radius).sort((a,b)=>Math.hypot(a.x-x,a.z-z)-Math.hypot(b.x-x,b.z-z))[0];
-    if(next){this.selected=next;this.visited.add(next.id);this.cooldown=30;this.selectedSeconds=0;this.acknowledged=false;return next;}
+    if(next){this.selected=this.contextual(next);this.visited.add(next.id);this.cooldown=30;this.selectedSeconds=0;this.acknowledged=false;return this.selected;}
   }
-  choose(id:string):TourComment|undefined {const c=this.comments.find(c=>c.id===id);if(c){this.selected=c;this.visited.add(c.id);this.acknowledged=true;this.selectedSeconds=0;}return c;}
+  choose(id:string):TourComment|undefined {const c=this.comments.find(c=>c.id===id);if(c){this.selected=this.contextual(c);this.visited.add(c.id);this.acknowledged=true;this.selectedSeconds=0;return this.selected;}}
   dismiss():void {this.selected=undefined;this.selectedSeconds=0;}
   reset():void {this.visited.clear();this.selected=undefined;this.cooldown=0;}
 }

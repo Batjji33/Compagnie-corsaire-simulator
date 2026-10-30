@@ -43,11 +43,20 @@ page indique le nombre et la satisfaction. Celle-ci diminue avec les accélérat
 les efforts latéraux et la hauteur des vagues. L'effet de la mer contribue aussi au
 critère de confort de la mission. Les valeurs de confort sont restaurées à la reprise.
 
-Au maximum 40 silhouettes par groupe représentent les passagers. Corps et têtes
-utilisent chacun un dessin instancié ; seules trois silhouettes partagent un mouvement
-sur une passerelle pendant l'embarquement ou le débarquement. Le groupe du quai est
-placé sur le quai le plus proche, à sa hauteur simulée, et le groupe du pont suit le
-navire et ses mouvements. Il ne s'agit pas d'un personnage animé pour chaque passager.
+Au maximum 40 silhouettes à bord et 40 sur chaque quai représentent les voyageurs.
+Les deux quais partagent les mêmes maillages instanciés : toujours quatre appels
+de dessin pour corps et têtes du pont et des quais. Seules trois silhouettes se
+déplacent sur la passerelle du port actif pendant les transferts. Le groupe du pont
+suit les mouvements du navire. Il ne s'agit pas d'un personnage animé pour chacun
+des 270 passagers possibles. Les positions sont mises à jour à 5 Hz.
+
+En service continu, les deux cales ont des voyageurs en attente et chaque trajet
+renouvelle l'effectif. La satisfaction repart avec les nouveaux passagers ; le bilan
+conserve une moyenne pondérée par les voyageurs effectivement débarqués. Chaque
+rotation réactive les commentaires géographiques pour les nouveaux voyageurs. Les
+introductions de Saint-Malo et Dinard sont adaptées au sens de navigation, en
+préservant les textes personnels. Des annonces courtes accompagnent l'accostage,
+l'embarquement et le départ ; elles respectent les réglages de son et de voix.
 
 ## Excursion et annonces
 

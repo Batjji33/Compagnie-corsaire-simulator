@@ -9,9 +9,12 @@ import type { AudioSettings } from '../audio/MaritimeAudio.ts';
 import { DEFAULT_COMMENTS,validateComment } from '../excursions/comments.ts';
 import type { TourComment } from '../excursions/comments.ts';
 import type { PassengerSnapshot } from '../passengers/Passengers.ts';
+import { validService } from '../missions/FerryService.ts';
+import type { ServiceSnapshot, ServiceResult } from '../missions/FerryService.ts';
+import { BOAT } from '../ships/parameters.ts';
 
 export interface MarineSettings {sea:SeaState;targetDirection:number;hour:number;tidePhase:number;evolving:boolean;dayCycle:boolean;tideCycle:boolean;damageEnabled:boolean;sound:boolean}
-export interface SavedRun {missionId:string;mission:MissionSnapshot;vessel:VesselState;command:HelmCommand;marine:MarineSettings;damage:number;passengers?:PassengerSnapshot;tourVisited?:string[]}
+export interface SavedRun {missionId:string;mission:MissionSnapshot;vessel:VesselState;command:HelmCommand;marine:MarineSettings;damage:number;passengers?:PassengerSnapshot;tourVisited?:string[];service?:ServiceSnapshot}
 export interface ImmersionSettings {audio:AudioSettings;traffic:boolean;automatic:boolean;manual:boolean;muted:boolean;comments:TourComment[]}
 export const defaultImmersion=():ImmersionSettings=>({audio:defaultAudio(),traffic:true,automatic:true,manual:true,muted:false,comments:structuredClone(DEFAULT_COMMENTS)});
 export type InstrumentLayout=Record<string,{visible:boolean;left:number|null;top:number|null}>;
@@ -19,11 +22,27 @@ export interface GameData {
   settings:Settings;marine:MarineSettings;active:SavedRun|null;
   stats:{completed:number;failed:number;passengers:number;seconds:number;freeSeconds:number;freeDistance:number;best:number};
   history:MissionResult[];
+  services:ServiceResult[];
   instruments:InstrumentLayout;
   immersion:ImmersionSettings;
 }
 export const defaultMarine=():MarineSettings=>({sea:'belle',targetDirection:250,hour:14,tidePhase:0,evolving:true,dayCycle:true,tideCycle:true,damageEnabled:true,sound:true});
-export function freshData():GameData {return {settings:loadSettings(),marine:defaultMarine(),active:null,stats:{completed:0,failed:0,passengers:0,seconds:0,freeSeconds:0,freeDistance:0,best:0},history:[],instruments:{},immersion:defaultImmersion()};}
+export function freshData():GameData {return {settings:loadSettings(),marine:defaultMarine(),active:null,stats:{completed:0,failed:0,passengers:0,seconds:0,freeSeconds:0,freeDistance:0,best:0},history:[],services:[],instruments:{},immersion:defaultImmersion()};}
+export function validServiceResult(value:unknown):value is ServiceResult {
+  if(!value||typeof value!=='object')return false;
+  const r=value as ServiceResult;
+  return typeof r.runId==='string'&&r.runId.length>0&&finite(r.completed,0,1e9)&&Number.isInteger(r.completed)
+    &&finite(r.transported,0,r.completed*BOAT.passengers)&&Number.isInteger(r.transported)&&finite(r.elapsed,0,1e12)
+    &&finite(r.playedSeconds,0,r.elapsed+1e-6)&&typeof r.finishedAt==='string'
+    &&(r.satisfaction===null||finite(r.satisfaction,0,100))&&(r.dockingQuality===null||finite(r.dockingQuality,0,100));
+}
+export function recordServiceResult(data:GameData,result:ServiceResult):boolean {
+  if(data.services.some(r=>r.runId===result.runId))return false;
+  data.services.unshift(structuredClone(result));data.services.length=Math.min(100,data.services.length);
+  // Completed legs already own their crossings, passengers and time in the global statistics.
+  data.stats.seconds+=result.playedSeconds;
+  return true;
+}
 export function recordResult(data:GameData,result:MissionResult):boolean {
   if(data.history.some(r=>r.runId===result.runId))return false;
   data.history.unshift(structuredClone(result));data.history.length=Math.min(100,data.history.length);
@@ -53,6 +72,7 @@ export function validRun(v:unknown):v is SavedRun {
   if(!a.vessel||!a.command||!a.marine||!finite(a.damage,0,1))return false;
   if(a.passengers&&(!finite(a.passengers.satisfaction,0,100)||!finite(a.passengers.discomfort,0,1e9)))return false;
   if(a.tourVisited&&(!Array.isArray(a.tourVisited)||a.tourVisited.length>50||!a.tourVisited.every(id=>typeof id==='string'&&id.length<=100)))return false;
+  if(a.service!==undefined&&(!validService(a.service)||a.missionId!=='malo-dinard'||a.service.elapsed+1e-6<s.elapsed||a.service.approachContacts>s.metrics.contacts))return false;
   for(const key of ['x','z','heading','surge','sway','yawRate','port','starboard','rudder'] as const)if(!finite(a.vessel[key],-1e6,1e6))return false;
   return ['port','starboard','rudder'].every(k=>finite(a.command[k as keyof HelmCommand],-1,1));
 }
@@ -93,6 +113,7 @@ export class GameStore {
         if(validRun(v.active))this.data.active=v.active;
         if(v.stats)for(const k of Object.keys(this.data.stats) as (keyof GameData['stats'])[])if(finite(v.stats[k],0,1e12))this.data.stats[k]=v.stats[k];
         if(Array.isArray(v.history))this.data.history=v.history.filter(r=>r&&typeof r.runId==='string'&&typeof r.missionId==='string'&&typeof r.completed==='boolean'&&finite(r.score,0,100)&&finite(r.elapsed,0,1e9)&&typeof r.grade==='string').slice(0,100);
+        if(Array.isArray(v.services))this.data.services=v.services.filter(validServiceResult).slice(0,100);
       }
     }catch{this.available=false;}
     return this.data;

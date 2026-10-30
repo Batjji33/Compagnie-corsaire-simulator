@@ -19,8 +19,8 @@ export class PassengerView {
   private headMaterial=new MeshStandardMaterial({color:0xd4ae8e,roughness:1});
   private deckBodies=new InstancedMesh(this.bodyGeometry,this.bodyMaterial,MAX_PEOPLE);
   private deckHeads=new InstancedMesh(this.headGeometry,this.headMaterial,MAX_PEOPLE);
-  private quayBodies=new InstancedMesh(this.bodyGeometry,this.bodyMaterial,MAX_PEOPLE);
-  private quayHeads=new InstancedMesh(this.headGeometry,this.headMaterial,MAX_PEOPLE);
+  private quayBodies=new InstancedMesh(this.bodyGeometry,this.bodyMaterial,MAX_PEOPLE*2);
+  private quayHeads=new InstancedMesh(this.headGeometry,this.headMaterial,MAX_PEOPLE*2);
   private object=new Object3D();
   private gangway=new Mesh(new BoxGeometry(1,.12,1),new MeshStandardMaterial({color:0xb6b3a5,roughness:1}));
   private entry=new Vector3();private landing=new Vector3();private direction=new Vector3();private axis=new Vector3(0,0,1);
@@ -28,7 +28,7 @@ export class PassengerView {
   constructor(private vessel:Vessel,private people:Passengers){
     const palette=[0x547d85,0xddd7c7,0xb37f5c,0x314c64,0x869578];
     for(const mesh of [this.deckBodies,this.deckHeads,this.quayBodies,this.quayHeads]){mesh.frustumCulled=false;mesh.count=0;}
-    for(let i=0;i<MAX_PEOPLE;i++)for(const mesh of [this.deckBodies,this.quayBodies])mesh.setColorAt(i,new Color(palette[i%palette.length]));
+    for(let i=0;i<MAX_PEOPLE*2;i++){const color=new Color(palette[i%palette.length]);this.quayBodies.setColorAt(i,color);if(i<MAX_PEOPLE)this.deckBodies.setColorAt(i,color);}
     this.deck.add(this.deckBodies,this.deckHeads);this.vessel.model.root.add(this.deck);this.quay.add(this.quayBodies,this.quayHeads,this.gangway);
   }
   render(dt:number,time:number):void {
@@ -44,20 +44,25 @@ export class PassengerView {
       this.deckBodies.setMatrixAt(i,this.object.matrix);this.deckHeads.setMatrixAt(i,this.object.matrix);
     }
     const count=moving?Math.min(MAX_PEOPLE,Math.ceil((p.total-p.count)/5)):p.phase==='complete'?Math.min(MAX_PEOPLE,Math.ceil(p.total/5)):0;
-    this.quayBodies.count=this.quayHeads.count=count;
-    const s=this.vessel.dynamics.state,dock=DOCKS.reduce((a,b)=>Math.hypot(s.x-a.point[0],s.z-a.point[1])<Math.hypot(s.x-b.point[0],s.z-b.point[1])?a:b);
+    const s=this.vessel.dynamics.state,dock=DOCKS.find(d=>d.id===p.transferPort)??DOCKS.reduce((a,b)=>Math.hypot(s.x-a.point[0],s.z-a.point[1])<Math.hypot(s.x-b.point[0],s.z-b.point[1])?a:b);
     const sin=Math.sin(s.heading),cos=Math.cos(s.heading),side=Math.sign((dock.point[0]-s.x)*cos+(dock.point[1]-s.z)*sin)||1;
     this.entry.set(s.x+cos*side*3.5-sin*3,this.vessel.root.position.y+2,s.z+sin*side*3.5+cos*3);
     this.landing.set(dock.point[0],5.05,dock.point[1]);this.direction.subVectors(this.landing,this.entry);
-    this.gangway.visible=moving;this.gangway.position.copy(this.entry).add(this.landing).multiplyScalar(.5);this.gangway.scale.set(1.15,1,this.direction.length());this.gangway.quaternion.setFromUnitVectors(this.axis,this.direction.normalize());
-    for(let i=0;i<count;i++){
-      // Boarding and landing streams run between the side of the ship and the quay.
-      const stream=moving&&i<3,travel=(time*.35+i/3)%1,progress=p.phase==='boarding'?1-travel:travel;
+    this.gangway.visible=moving&&Math.hypot(s.x-dock.point[0],s.z-dock.point[1])<80;this.gangway.position.copy(this.entry).add(this.landing).multiplyScalar(.5);this.gangway.scale.set(1.15,1,this.direction.length());this.gangway.quaternion.setFromUnitVectors(this.axis,this.direction.normalize());
+    let index=0;
+    for(const port of DOCKS){
+      const queued=p.waiting?p.waiting[port.id as 'malo'|'dinard']+(port===dock&&p.phase==='unloading'?p.total-p.count:0):port===dock?count*5:0;
+      const visible=Math.min(MAX_PEOPLE,Math.ceil(queued/5));
+      for(let i=0;i<visible;i++){
+      // Two waiting crowds share the same two draw calls. Only the active port has a stream.
+      const stream=this.gangway.visible&&port===dock&&i<3,travel=(time*.35+i/3)%1,progress=p.phase==='boarding'?1-travel:travel;
       if(stream)this.object.position.copy(this.entry).lerp(this.landing,progress);
-      else this.object.position.set(dock.point[0]+(i%5-2)*.8,5.05,dock.point[1]+(Math.floor(i/5)-3)*.8);
+      else this.object.position.set(port.point[0]+(i%5-2)*.8,5.05,port.point[1]+(Math.floor(i/5)-3)*.8);
       this.object.scale.setScalar(1);this.object.rotation.set(0,p.phase==='boarding'?-Math.PI/2:Math.PI/2,0);this.object.updateMatrix();
-      this.quayBodies.setMatrixAt(i,this.object.matrix);this.quayHeads.setMatrixAt(i,this.object.matrix);
+      this.quayBodies.setMatrixAt(index,this.object.matrix);this.quayHeads.setMatrixAt(index,this.object.matrix);index++;
+      }
     }
+    this.quayBodies.count=this.quayHeads.count=index;
     for(const mesh of [this.deckBodies,this.deckHeads,this.quayBodies,this.quayHeads])mesh.instanceMatrix.needsUpdate=true;
   }
   dispose():void {this.deck.removeFromParent();this.quay.removeFromParent();for(const m of [this.deckBodies,this.deckHeads,this.quayBodies,this.quayHeads])m.dispose();this.bodyGeometry.dispose();this.headGeometry.dispose();this.bodyMaterial.dispose();this.headMaterial.dispose();this.gangway.geometry.dispose();this.gangway.material.dispose();}
