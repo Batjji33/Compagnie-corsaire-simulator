@@ -203,6 +203,9 @@ footer { z-index: 4; inset: auto var(--right) var(--bottom) var(--left); display
 .tour-read { color: var(--muted); margin-left: auto; font-size: 11px; }
 #tour-caption { padding: 0 12px 12px; color: #f4f6f5; font-size: 12px; line-height: 1.6; max-height: 130px; overflow: auto; }
 #tour-caption:empty { display: none; }
+.tour-caption-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 10px; }
+.tour-caption-actions button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 12px; }
+#tour-notice-voice-status { padding: 0 12px 10px; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .footer-tools { display: flex; align-items: center; gap: 6px; margin-left: auto; pointer-events: auto; }
 .footer-tools button, .helm-help summary { min-height: 46px; background: var(--hud); border-color: var(--edge); font-size: 12px; padding: 0 12px; }
 .helm-help summary { display: flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--edge); border-radius: 10px; cursor: pointer; list-style: none; }

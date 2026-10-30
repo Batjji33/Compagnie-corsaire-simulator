@@ -88,7 +88,17 @@ export class Immersion {
     window.addEventListener('blur',stopHorn,options);
     this.status.id='passenger-status';this.status.setAttribute('aria-live','off');summary.append(this.status);
     this.notice.className='tour-notice';this.notice.hidden=true;this.notice.innerHTML=`<summary>${icon('tour')}<span id="tour-notice-title" aria-live="polite">Annonce touristique</span><span class="tour-read">Lire</span></summary>`;
-    this.caption.id='tour-caption';this.notice.append(this.caption);document.querySelector('.voyage-overlays')!.prepend(this.notice);
+    this.caption.id='tour-caption';this.notice.append(this.caption);
+    this.notice.insertAdjacentHTML('beforeend',`<div class="tour-caption-actions"><button id="tour-notice-play">${icon('sound')}<span>Écouter le commentaire</span></button><button id="tour-notice-stop">Arrêter</button></div><p id="tour-notice-voice-status" role="status" hidden></p>`);
+    this.notice.querySelector('#tour-notice-play')!.addEventListener('click',()=>{
+      const text=this.caption.textContent;if(!text||this.guide.muted)return;
+      this.pendingNarration=undefined;this.announcementSeconds=0;
+      if(!this.audio.settings.enabled){this.audio.apply({...this.audio.settings,enabled:true});this.persist();}
+      this.audio.unlock();this.audio.speak(text,true);
+      this.notice.querySelector<HTMLElement>('#tour-notice-voice-status')!.hidden=false;this.render();
+    },options);
+    this.notice.querySelector('#tour-notice-stop')!.addEventListener('click',()=>{this.pendingNarration=undefined;this.audio.stopSpeech();this.render();},options);
+    document.querySelector('.voyage-overlays')!.prepend(this.notice);
     document.getElementById('app')!.classList.add('immersion-ready');
     window.addEventListener('pointerdown',()=>this.audio.unlock(),options);window.addEventListener('keydown',()=>this.audio.unlock(),options);
     document.addEventListener('visibilitychange',()=>{if(document.hidden)this.audio.setPaused(true);},options);
@@ -131,7 +141,7 @@ export class Immersion {
     if(c){this.showComment(c);if(!this.guide.manual&&!this.guide.muted){if(this.announcementSeconds>0)this.pendingNarration=c.text;else this.audio.speak(c.text);}}
     if(this.pendingNarration&&this.announcementSeconds===0){if(!this.guide.manual&&!this.guide.muted)this.audio.speak(this.pendingNarration);this.pendingNarration=undefined;}
   }
-  private showComment(c:TourComment):void {this.caption.textContent=c.text;this.notice.querySelector('#tour-notice-title')!.textContent=c.title;this.notice.hidden=false;}
+  private showComment(c:TourComment):void {this.caption.textContent=c.text;this.notice.querySelector('#tour-notice-title')!.textContent=c.title;this.notice.querySelector<HTMLElement>('#tour-notice-voice-status')!.hidden=true;this.notice.hidden=false;}
   render():void {
     const p=this.world.passengers,status=`${p.count} passagers · satisfaction ${Math.round(p.satisfaction)} %`;
     if(this.status.textContent!==status)this.status.textContent=status;
@@ -141,6 +151,10 @@ export class Immersion {
     this.hornButton.setAttribute('aria-pressed',String(this.audio.hornActive));
     const voiceStatus=this.panel.querySelector('#voice-status')!;if(voiceStatus.textContent!==this.audio.voiceStatus)voiceStatus.textContent=this.audio.voiceStatus;
     this.panel.querySelector<HTMLButtonElement>('#tour-play')!.disabled=this.guide.muted;
+    const noticePlay=this.notice.querySelector<HTMLButtonElement>('#tour-notice-play')!;
+    noticePlay.disabled=this.guide.muted;noticePlay.title=this.guide.muted?'Réactivez les annonces dans Excursion pour écouter.':'Lire à voix haute le commentaire affiché';
+    const noticeStatus=this.notice.querySelector<HTMLElement>('#tour-notice-voice-status')!;
+    if(!noticeStatus.hidden&&noticeStatus.textContent!==this.audio.voiceStatus)noticeStatus.textContent=this.audio.voiceStatus;
     this.panel.querySelector<HTMLInputElement>('#audio-enabled')!.checked=this.audio.settings.enabled;
     this.audio.update(this.world.vessel.dynamics.state,this.world.vessel.marine,!!this.world.traffic.risk);
   }
