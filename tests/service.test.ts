@@ -89,11 +89,11 @@ test('old one-way saves migrate into a service without resetting the ongoing cro
   const service=new FerryService(undefined,leg.state);assert.equal(service.mission.phase,'crossing');assert.equal(service.state.elapsed,230);assert.equal(service.destinationPort,'dinard');assert.deepEqual(service.mission.state.visited,[0]);
 });
 
-test('return route and recovery poses stay in open water and do not alter standard mission limits',()=>{
+test('return route and recovery poses stay in open water; standard missions also tolerate lateness',()=>{
   for(const d of [serviceDefinition(0),serviceDefinition(1)])for(const pose of [d.origin.berth,d.destination.berth,d.destination.approach]){
     const ship=new VesselDynamics(pose),contact=new ShoreContact();contact.evaluate(ship.state);assert.equal(contact.label,'');assert.ok(depthAt(pose.x,pose.z,-2.4)>BOAT.draft+1);
   }
-  const standard=new Mission({...MALO_DINARD,id:'other-mission'});standard.board();standard.state.elapsed=1201;standard.update(1,sample());assert.equal(standard.phase,'failed');
+  const standard=new Mission({...MALO_DINARD,id:'other-mission'});standard.board();standard.state.elapsed=1201;standard.update(1,sample());assert.equal(standard.phase,'boarding');assert.equal(standard.finished,false);
 });
 
 test('passenger transfers respect capacity and zero-time synchronization does not spoil satisfaction',()=>{
