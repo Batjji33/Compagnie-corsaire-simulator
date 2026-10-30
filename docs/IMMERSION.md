@@ -3,7 +3,8 @@
 ## Trafic autonome
 
 Le trafic comprend cinq voiliers, cinq bateaux de plaisance, cinq ferries, cinq
-vedettes et quatre cargos, soit 24 navires. Chaque définition de `src/traffic/Traffic.ts` possède une route en mètres,
+vedettes et quatre cargos, soit 24 navires ambiants, auxquels s’ajoutent trois
+bateaux-taxis permanents de 26,3 m. Chaque définition de `src/traffic/Traffic.ts` possède une route en mètres,
 un nom, une famille, des dimensions et une vitesse. Les navires suivent des trajets
 dans l'avant-port, au centre de la baie, près de Dinard et au large des forts.
 Ils tournent progressivement, ralentissent dans les croisements et choisissent un
@@ -18,6 +19,21 @@ La météo diminue aussi les vitesses. Les suppressions se font loin du joueur e
 activations gardent 180 m plus les demi-longueurs du joueur et du navire autonome.
 Une séparation supplémentaire entre navires actifs empêche les activations superposées.
 Les navires proches sont conservés temporairement lors d'une baisse de densité.
+
+Les trois navettes supplémentaires assurent la liaison Saint-Malo ↔ Dinard en
+continu : **Étoile de la Rance** (bleue, auvent), **Belle du Moulinet** (rouge,
+deux cheminées) et **Alizé de Cézembre** (verte, pont couvert). Leurs départs sont
+décalés, avec 1 à 2 minutes d’escale et des transferts simplifiés. Elles partagent
+les cales avec le joueur, selon une file d’attente et une réservation unique.
+Le joueur doit attendre devant une cale occupée ; les navettes attendent à distance
+quand il est amarré. La réservation dure jusqu’au dégagement du navire sortant.
+
+Une navette bloquée par le joueur signale sa présence après 30 secondes : corne
+de 5 secondes toutes les 25 secondes. Les appels concurrents sont décalés pour
+éviter leur superposition. Le son vient du navire, s’atténue avec la distance et
+cesse dès que la cale est libérée. Les réglages de corne, de son et de pause restent
+prioritaires. La carte donne les noms et états ; le radar reprend les mêmes agents.
+Les [détails techniques](../src/traffic/README.md) expliquent les manœuvres et tests.
 
 Les cargos mesurent 108, 120, 126 et 130 m, pour 18 à 22 m de large, avec une coque
 haute, une passerelle arrière, une cheminée et des rangées de conteneurs. Leur vitesse

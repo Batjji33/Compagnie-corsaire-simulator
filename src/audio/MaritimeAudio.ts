@@ -2,6 +2,8 @@ import { clamp } from '../ships/parameters.ts';
 import { DOCKS } from '../world/geography.ts';
 import type { VesselState } from '../physics/VesselDynamics.ts';
 import type { Marine } from '../weather/Marine.ts';
+import type { TaxiHorn } from '../traffic/WaterTaxis.ts';
+interface HornVoice {gain:GainNode;sources:AudioScheduledSourceNode[];nodes:AudioNode[]}
 export interface AudioSettings {enabled:boolean;master:number;engines:number;waves:number;wind:number;port:number;alerts:number;horn:number;voice:number}
 export const defaultAudio=():AudioSettings=>({enabled:false,master:.55,engines:.45,waves:.4,wind:.3,port:.25,alerts:.7,horn:.7,voice:.9});
 export function readAudio(value:unknown):AudioSettings {
@@ -28,10 +30,12 @@ export class MaritimeAudio {
   private disposed=false;
   private noiseBuffer:AudioBuffer|undefined;
   private hornWave:PeriodicWave|undefined;
-  private hornVoice:{gain:GainNode;sources:AudioScheduledSourceNode[];nodes:AudioNode[]}|undefined;
+  private hornVoice:HornVoice|undefined;
+  private trafficVoice:{id:string;voice:HornVoice;panner:PannerNode}|undefined;
   private hornTimer:ReturnType<typeof setTimeout>|undefined;
   private repairVoice:{gain:GainNode;tones:OscillatorNode[]}|undefined;
   get hornActive():boolean {return !!this.hornVoice;}
+  get trafficHornActive():boolean {return !!this.trafficVoice;}
   unlock():void {
     if(this.disposed||!this.settings.enabled)return;
     try{
@@ -50,7 +54,7 @@ export class MaritimeAudio {
   }
   setPaused(paused:boolean):void {
     this.paused=paused;
-    if(paused){this.stopHorn(true);this.stopSpeech();if(this.context?.state==='running')void this.context.suspend().catch(()=>{});}
+    if(paused){this.stopHorn(true);this.stopTrafficHorn();this.stopSpeech();if(this.context?.state==='running')void this.context.suspend().catch(()=>{});}
     else this.unlock();
   }
   apply(settings:AudioSettings):void {
@@ -58,6 +62,7 @@ export class MaritimeAudio {
     if(!this.settings.enabled||this.settings.master===0||this.settings.alerts===0)this.stopRepair();
     if(!this.settings.enabled||this.settings.master===0||this.settings.horn===0)this.stopHorn(true);
     else if(this.hornVoice&&this.context)this.hornVoice.gain.gain.setTargetAtTime(this.settings.horn*.16,this.context.currentTime,.04);
+    if(!this.settings.enabled||this.settings.master===0||this.settings.horn===0)this.stopTrafficHorn();
     if(!this.settings.enabled||this.settings.master===0||this.settings.voice===0)this.stopSpeech();
     if(this.master&&this.context)this.master.gain.setTargetAtTime(this.settings.enabled&&!this.paused?this.settings.master:0,this.context.currentTime,.06);
     if(!this.settings.enabled&&this.context?.state==='running')void this.context.suspend().catch(()=>{});
@@ -113,10 +118,16 @@ export class MaritimeAudio {
     if(this.hornVoice)return true;
     this.unlock();const c=this.context;if(!c||!this.master||c.state==='closed')return false;
     try{
-      this.stopSpeech();const now=c.currentTime,volume=c.createGain(),filter=c.createBiquadFilter(),air=c.createGain();
+      this.stopSpeech();this.stopTrafficHorn();
+      this.hornVoice=this.createHorn(this.master,this.settings.horn*.16);
+      this.hornTimer=setTimeout(()=>this.stopHorn(),8000);return true;
+    }catch{this.stopHorn(true);return false;}
+  }
+  private createHorn(output:AudioNode,level:number):HornVoice {
+      const c=this.context!,now=c.currentTime,volume=c.createGain(),filter=c.createBiquadFilter(),air=c.createGain();
       filter.type='lowpass';filter.frequency.value=1200;filter.Q.value=.6;
-      volume.gain.setValueAtTime(0,now);volume.gain.linearRampToValueAtTime(this.settings.horn*.16,now+.14);
-      volume.connect(filter);filter.connect(this.master);this.master.gain.setTargetAtTime(this.settings.master,now,.025);
+      volume.gain.setValueAtTime(0,now);volume.gain.linearRampToValueAtTime(level,now+.14);
+      volume.connect(filter);filter.connect(output);this.master!.gain.setTargetAtTime(this.settings.master,now,.025);
       if(!this.hornWave){const real=new Float32Array(9),imag=new Float32Array([0,1,.64,.38,.24,.15,.1,.06,.035]);this.hornWave=c.createPeriodicWave(real,imag);}
       const sources:AudioScheduledSourceNode[]=[],nodes:AudioNode[]=[volume,filter,air];
       const vibrato=c.createOscillator(),depth=c.createGain();vibrato.frequency.value=4.6;depth.gain.value=.6;vibrato.connect(depth);sources.push(vibrato);nodes.push(depth);
@@ -125,10 +136,29 @@ export class MaritimeAudio {
         depth.connect(oscillator.frequency);oscillator.connect(volume);sources.push(oscillator);
       }
       if(this.noiseBuffer){const breath=c.createBufferSource();breath.buffer=this.noiseBuffer;breath.loop=true;air.gain.value=.06;breath.connect(air);air.connect(volume);sources.push(breath);}
-      this.hornVoice={gain:volume,sources,nodes};
       for(const source of sources){source.start(now);source.stop(now+8.3);}
-      this.hornTimer=setTimeout(()=>this.stopHorn(),8000);return true;
-    }catch{this.stopHorn(true);return false;}
+      return {gain:volume,sources,nodes};
+  }
+  /** Same horn synthesis, one spatial source; its envelope is controlled by simulation time. */
+  updateTrafficHorn(signal:TaxiHorn|undefined,listener:VesselState,sound=true):void {
+    if(this.disposed||this.paused||!sound||!signal||this.hornActive||!this.settings.enabled||this.settings.master===0||this.settings.horn===0){this.stopTrafficHorn();return;}
+    if(this.trafficVoice?.id!==signal.id)this.stopTrafficHorn();
+    this.unlock();const c=this.context;if(!c||!this.master||c.state!=='running')return;
+    try{
+      if(!this.trafficVoice){
+        const panner=c.createPanner();panner.panningModel='equalpower';panner.distanceModel='inverse';panner.refDistance=70;panner.maxDistance=1800;panner.rolloffFactor=1.2;panner.connect(this.master);
+        this.trafficVoice={id:signal.id,panner,voice:this.createHorn(panner,this.settings.horn*.13)};
+      }
+      this.trafficVoice.panner.setPosition(signal.x,0,signal.z);
+      this.trafficVoice.voice.gain.gain.setTargetAtTime(this.settings.horn*.13,c.currentTime,.04);
+      c.listener.setPosition(listener.x,0,listener.z);c.listener.setOrientation(Math.sin(listener.heading),0,-Math.cos(listener.heading),0,1,0);
+    }catch{this.stopTrafficHorn();}
+  }
+  private stopTrafficHorn():void {
+    const v=this.trafficVoice;if(!v)return;this.trafficVoice=undefined;
+    v.voice.gain.gain.cancelScheduledValues(this.context!.currentTime);v.voice.gain.gain.value=0;
+    for(const source of v.voice.sources){try{source.stop();}catch{/* Already stopped. */}source.disconnect();}
+    v.voice.nodes.forEach(n=>n.disconnect());v.panner.disconnect();
   }
   stopHorn(immediate=false):void {
     clearTimeout(this.hornTimer);const voice=this.hornVoice,c=this.context;if(!voice||!c)return;this.hornVoice=undefined;
@@ -165,5 +195,5 @@ export class MaritimeAudio {
     clearTimeout(this.voiceTimer);
     if(this.speech){this.speech.onend=this.speech.onerror=this.speech.onstart=null;try{if(typeof speechSynthesis!=='undefined')speechSynthesis.cancel();}catch{/* Text is always available. */}this.speech=undefined;this.voiceStatus='Lecture arrêtée.';}
   }
-  dispose():void {this.disposed=true;this.stopRepair();this.stopHorn(true);this.stopSpeech();for(const source of this.sources){try{source.stop();source.disconnect();}catch{/* Already stopped. */}}void this.context?.close().catch(()=>{});}
+  dispose():void {this.disposed=true;this.stopRepair();this.stopHorn(true);this.stopTrafficHorn();this.stopSpeech();for(const source of this.sources){try{source.stop();source.disconnect();}catch{/* Already stopped. */}}void this.context?.close().catch(()=>{});}
 }

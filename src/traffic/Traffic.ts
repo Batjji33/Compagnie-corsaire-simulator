@@ -1,9 +1,12 @@
 import { BOAT, KNOT, clamp } from '../ships/parameters.ts';
 import { BAY, LANDS, ROCKS, DOCKS, inside } from '../world/geography.ts';
 import type { VesselState } from '../physics/VesselDynamics.ts';
+import { WaterTaxis, TAXI_ROUTES, taxiState } from './WaterTaxis.ts';
+import type { TaxiState } from './WaterTaxis.ts';
+import type { PortId } from './Berths.ts';
 
 export type TrafficKind='sail'|'pleasure'|'ferry'|'launch'|'cargo';
-export interface TrafficRoute {id:string;name:string;kind:TrafficKind;knots:number;length:number;beam:number;loop?:boolean;points:readonly (readonly [number,number])[]}
+export interface TrafficRoute {id:string;name:string;kind:TrafficKind;knots:number;length:number;beam:number;loop?:boolean;taxi?:boolean;points:readonly (readonly [number,number])[]}
 export const TRAFFIC_LIMITS={low:18,medium:24,high:24} as const;
 export const TRAFFIC_TURN_RATE={sail:.12,pleasure:.22,ferry:.1,launch:.24,cargo:.025} as const;
 export const TRAFFIC_ROUTES:TrafficRoute[]=[
@@ -41,15 +44,15 @@ export function closestApproach(a:MovingPoint,b:MovingPoint,horizon=35):{distanc
 }
 const LAND_BOUNDS=LANDS.map(land=>({land,minX:Math.min(...land.outline.map(p=>p[0])),maxX:Math.max(...land.outline.map(p=>p[0])),minZ:Math.min(...land.outline.map(p=>p[1])),maxZ:Math.max(...land.outline.map(p=>p[1]))}));
 const CLEARANCE_OFFSETS=[[0,0],[-1,0],[1,0],[0,-1],[0,1]] as const;
-export function navigable(x:number,z:number,margin=12):boolean {
+export function navigable(x:number,z:number,margin=12,berth?:PortId):boolean {
   if(x-margin<BAY.minX||x+margin>BAY.maxX||z-margin<BAY.minZ||z+margin>BAY.maxZ)return false;
   for(const bounds of LAND_BOUNDS){
     if(x+margin<bounds.minX||x-margin>bounds.maxX||z+margin<bounds.minZ||z-margin>bounds.maxZ)continue;
     for(const [dx,dz] of CLEARANCE_OFFSETS)if(inside(x+dx*margin,z+dz*margin,bounds.land.outline))return false;
   }
-  return ROCKS.every(r=>Math.hypot(x-r.x,z-r.z)>r.radius+margin)&&DOCKS.every(d=>Math.hypot(x-d.point[0],z-d.point[1])>60+margin);
+  return ROCKS.every(r=>Math.hypot(x-r.x,z-r.z)>r.radius+margin)&&DOCKS.every(d=>d.id===berth||Math.hypot(x-d.point[0],z-d.point[1])>60+margin);
 }
-export interface TrafficAgent extends MovingPoint {route:TrafficRoute;active:boolean;heading:number;speed:number;target:number;direction:number;aiTime:number;desiredHeading:number;desiredSpeed:number;avoiding:boolean}
+export interface TrafficAgent extends MovingPoint {route:TrafficRoute;active:boolean;heading:number;speed:number;target:number;direction:number;aiTime:number;desiredHeading:number;desiredSpeed:number;avoiding:boolean;taxi?:TaxiState}
 export interface TrafficRisk {id:string;name:string;distance:number;cpa:number;seconds:number}
 export interface TrafficContact {x:number;z:number;yaw:number;label:string;impact:number}
 export function trafficDensity(hour:number,waves:number,visibility:number):number {
@@ -63,11 +66,55 @@ export class Traffic {
     return {route,active:false,x:p[0],z:p[1],vx:0,vz:0,heading,speed:0,target:next,direction:1,aiTime:0,desiredHeading:heading,desiredSpeed:0,avoiding:false};
   });
   private riskTimer=0;
+  private initialized=false;
+  readonly taxis:WaterTaxis;
+  playerDestination:PortId|undefined;
+  berthNotice(port:PortId):string {
+    if(!this.enabled)return '';
+    const b=this.taxis.berths.ports[port],id=b.owner??b.reserved;
+    const boat=this.taxis.agents.find(a=>a.route.id===id);
+    if(boat)return `${boat.route.name} · ${b.owner?'à quai':'manœuvre réservée'}`;
+    const waiting=this.taxis.agents.find(a=>a.taxi!.destination===port&&a.taxi!.phase==='waiting');
+    return waiting?`${waiting.route.name} attend la cale`:'';
+  }
+  canPlayerDock(port:PortId):boolean {
+    return !this.enabled||this.taxis.berths.request(port,'player')&&this.taxis.berths.availableToPlayer(port);
+  }
+  constructor(){
+    const taxis=TAXI_ROUTES.map((route,i):TrafficAgent=>{
+      const s=taxiState(i),p=route.points[s.point],q=route.points[Math.min(s.point+1,route.points.length-1)],heading=Math.atan2(q[0]-p[0],-(q[1]-p[1]));
+      s.point++;
+      return {route,active:true,x:p[0],z:p[1],vx:0,vz:0,heading,speed:0,target:0,direction:1,aiTime:0,desiredHeading:heading,desiredSpeed:0,avoiding:false,taxi:s};
+    });
+    this.agents.push(...taxis);this.taxis=new WaterTaxis(taxis);
+  }
+  reset():void {
+    const fresh=new Traffic();
+    this.agents.forEach((a,i)=>Object.assign(a,fresh.agents[i]));
+    this.taxis.reset();this.initialized=false;this.elapsed=0;this.risk=undefined;this.playerDestination=undefined;
+  }
+  private initialize(player:VesselState):void {
+    // New-session spawning also respects the position of a restored player save.
+    for(const a of this.taxis.agents){
+      if(Math.hypot(a.x-player.x,a.z-player.z)>220)continue;
+      const index=a.route.points.findIndex(p=>Math.hypot(p[0]-player.x,p[1]-player.z)>220&&this.taxis.agents.every(b=>b===a||Math.hypot(b.x-p[0],b.z-p[1])>90));
+      if(index<0)continue;
+      const p=a.route.points[index],q=a.route.points[Math.min(index+1,a.route.points.length-1)];
+      a.x=p[0];a.z=p[1];a.heading=Math.atan2(q[0]-p[0],-(q[1]-p[1]));a.desiredHeading=a.heading;a.taxi!.point=index+1;
+    }
+    this.initialized=true;
+  }
   private contact:TrafficContact={x:0,z:0,yaw:0,label:'',impact:0};
   update(dt:number,player:VesselState,hour:number,waves:number,visibility:number):void {
+    if(!Number.isFinite(dt)||dt<=0)return;
+    if(!this.initialized)this.initialize(player);
     this.elapsed+=dt;this.targetCount=this.enabled?Math.min(this.limit,trafficDensity(hour,waves,visibility)):0;
-    let count=this.agents.filter(a=>a.active).length;
+    if(this.enabled)this.taxis.berths.updatePlayer(player,this.playerDestination);
+    else this.taxis.horn=undefined;
+    for(const a of this.taxis.agents)a.active=this.enabled;
+    let count=this.agents.filter(a=>a.active&&!a.taxi).length;
     for(const a of this.agents){
+      if(a.taxi)continue;
       const distance=Math.hypot(a.x-player.x,a.z-player.z);
       if(!this.enabled||(count>this.targetCount&&distance>650)){if(a.active)count--;a.active=false;}
       else if(!a.active&&count<this.targetCount&&distance>180+(BOAT.length+a.route.length)/2&&navigable(a.x,a.z,a.route.length/2)&&this.agents.every(b=>!b.active||Math.hypot(a.x-b.x,a.z-b.z)>60+(a.route.length+b.route.length)/2)){a.active=true;count++;}
@@ -82,9 +129,11 @@ export class Traffic {
       a.speed+=(a.desiredSpeed*turning-a.speed)*(1-Math.exp(-dt/(a.route.kind==='cargo'?10:3)));
       const vx=Math.sin(a.heading)*a.speed,vz=-Math.cos(a.heading)*a.speed;
       const x=a.x+vx*dt,z=a.z+vz*dt;
-      if(navigable(x,z,a.route.length/2)){a.x=x;a.z=z;a.vx=vx;a.vz=vz;}
+      const clearTaxis=this.taxis.agents.every(b=>!b.active||Math.hypot(x-b.x,z-b.z)>(a.route.length+b.route.length)/2+5);
+      if(clearTaxis&&navigable(x,z,a.route.length/2)){a.x=x;a.z=z;a.vx=vx;a.vz=vz;}
       else {a.speed=0;a.vx=a.vz=0;a.desiredHeading=a.heading+.7;a.aiTime=.5;}
     }
+    this.taxis.update(dt,player,this.agents,waves,visibility);
     this.riskTimer-=dt;if(this.riskTimer<=0){this.detectRisk(player);this.riskTimer=.1;}
   }
   private steer(a:TrafficAgent,player:VesselState,waves:number,visibility:number):void {

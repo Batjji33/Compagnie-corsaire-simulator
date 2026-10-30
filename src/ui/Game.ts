@@ -14,6 +14,7 @@ import { MissionMarkers } from '../world/MissionMarkers';
 import { Immersion } from './Immersion';
 import { icon } from './icons';
 import { formatHour } from '../core/time';
+import type { PortId } from '../traffic/Berths';
 
 const names:Record<MissionPhase,string>={preparation:'Préparation',boarding:'Embarquement',departure:'Départ',crossing:'Traversée',approach:'Approche',docking:'Accostage',unloading:'Débarquement',complete:'Bilan',failed:'Mission interrompue'};
 const clock=(seconds:number)=>`${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
@@ -178,6 +179,7 @@ export class Game {
     if(this.service&&!this.service.result&&this.started){this.show('end-service');return;}
     if(definition.id===MALO_DINARD.id)definition=MALO_DINARD;
     this.store.data.active=null;
+    this.world.traffic.reset();
     this.service=definition.id===MALO_DINARD.id?new FerryService():undefined;
     this.mission=this.service?.mission??new Mission(definition);this.mode='mission';this.started=false;this.lastPhase=undefined;
     this.world.vessel.dynamics.reset(definition.origin.berth);this.world.vessel.marine.damage=0;this.world.vessel.moored=true;
@@ -194,7 +196,7 @@ export class Game {
     if(this.service&&!this.service.result&&this.started){this.show('end-service');return;}
     const get=(id:string)=>this.dialog.querySelector<HTMLInputElement>(`#${id}`)!;
     this.store.data.marine=readMarine({...this.store.data.marine,sea:get('free-sea').value,hour:Number(get('free-hour').value),targetDirection:Number(get('free-wind').value),damageEnabled:get('free-damage').checked});
-    this.mode='free';this.service=undefined;this.mission=undefined;this.world.vessel.moored=false;this.world.vessel.dynamics.reset();this.world.vessel.marine.damage=0;
+    this.mode='free';this.service=undefined;this.mission=undefined;this.world.traffic.reset();this.world.vessel.moored=false;this.world.vessel.dynamics.reset();this.world.vessel.marine.damage=0;
     this.world.passengers.reset();this.immersion.reset();this.immersion.guide.destination=undefined;
     document.querySelector('#app')!.classList.remove('mission-active');this.lockMissionSettings();
     this.applyMarine(this.store.data.marine);this.resetView();this.markers.setMission(null);this.launch();
@@ -230,6 +232,7 @@ export class Game {
       else m.release();
     }
     else if(m.phase==='docking'){
+      if(!this.world.traffic.canPlayerDock(this.arrivalPort())){this.refreshHud();return;}
       const docked=this.service?this.service.dock(this.telemetry(),this.world.passengers.satisfaction):m.dock(this.telemetry());
       if(docked&&this.service)this.immersion.announce(`Accostage réussi à ${this.service.destinationName}. Débarquement des passagers.`);
     }
@@ -243,6 +246,10 @@ export class Game {
     const skipped=this.service.skipWait(this.telemetry(),this.world.passengers.satisfaction);
     if(!skipped)return;
     this.syncServiceMission(skipped.arrival);
+    // Advance only the autonomous traffic during the player's moored time jump.
+    let remaining=skipped.seconds;
+    const v=this.world.vessel;
+    while(remaining>1e-8){const dt=Math.min(1/30,remaining);this.world.traffic.update(dt,v.dynamics.state,v.marine.hour,v.marine.waves,v.marine.visibility);remaining-=dt;}
     this.world.vessel.marine.update(skipped.seconds);this.syncMissionClock();
     this.world.vessel.marine.hazards(this.world.vessel.dynamics.state,'',0,0);
     this.updatePassengers(0);this.refreshHud();this.snapshot();
@@ -259,11 +266,13 @@ export class Game {
     const v=this.world.vessel,s=v.dynamics.state,c=v.dynamics.command;
     return {...s,speed:Math.hypot(s.surge,s.sway),commandPort:c.port,commandStarboard:c.starboard,contact:v.contact.label,damage:v.marine.damage,clearance:v.marine.clearance};
   }
+  private arrivalPort():PortId {return this.mission?.definition.destination.name.startsWith('Dinard')?'dinard':'malo';}
   update(dt:number):void {
     if(this.paused)return;
     const v=this.world.vessel;
     this.syncMissionClock();
     v.moored=this.mode==='mission'&&!!this.mission?.moored;
+    this.world.traffic.playerDestination=this.mode==='mission'&&(this.mission?.phase==='approach'||this.mission?.phase==='docking')?this.arrivalPort():undefined;
     this.helm.setEnabled(!v.moored);this.helm.update(dt);this.world.update(dt);
     if(this.mode==='mission'&&this.mission){
       if(this.world.passengers.count>0)this.mission.state.metrics.discomfort+=Math.max(0,v.marine.waves-.5)*dt*.025;
@@ -351,13 +360,14 @@ export class Game {
       const d=dockingStatus(m.definition,t),limit=dockingRules(m.definition);
       const status=d.valid?'Prêt à amarrer':d.distance>limit.distance?'Rejoignez la zone ocre':d.speedKnots>=limit.speedKnots?'Réduisez la vitesse':t.contact?'Écartez le navire de l’obstacle':'Vérifiez le dégagement sous la quille';
       guidance=`Zone : ${d.distance.toFixed(0)} / ${limit.distance} m · ${d.speedKnots.toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1})} nd (moins de ${limit.speedKnots.toLocaleString('fr-FR')}) · ${status}`;
+      if(this.world.traffic.enabled&&!this.world.traffic.taxis.berths.availableToPlayer(this.arrivalPort()))guidance='Quai occupé — veuillez patienter';
     }
     if(this.service&&!m.moored&&this.service.delay>1e-6)guidance+=` · Retard +${clock(this.service.delay)}`;
     set('objective-guidance',guidance);
     const button=this.hud.querySelector<HTMLButtonElement>('#mission-action')!;
     button.hidden=!(m.phase==='departure'&&!m.state.released||m.phase==='docking');
     button.textContent=m.phase==='departure'?'Larguer les amarres':'Amarrer et débarquer';
-    button.disabled=m.phase==='docking'?!dockingStatus(m.definition,t).valid:m.phase==='departure'&&!m.departureAllowed;
+    button.disabled=m.phase==='docking'?!dockingStatus(m.definition,t).valid||this.world.traffic.enabled&&!this.world.traffic.taxis.berths.availableToPlayer(this.arrivalPort()):m.phase==='departure'&&!m.departureAllowed;
     const stages:MissionPhase[]=['boarding','departure','crossing','approach','docking','unloading'];
     this.hud.querySelector('#objective-steps')!.innerHTML=stages.map((p,i)=>`<li ${p===m.phase?'aria-current="step"':''}>${i<stages.indexOf(m.phase)?'✓ ':''}${names[p]}</li>`).join('');
     document.querySelector('#app')!.classList.toggle('mission-active',this.mode==='mission'&&!m.finished);

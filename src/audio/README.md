@@ -9,6 +9,12 @@ La corne à maintenir possède son propre volume, deux fondamentales de 147/196 
 des harmoniques et une enveloppe douce. Son contexte est déverrouillé dans le geste
 utilisateur ; relâchement, annulation, pause et perte de focus la coupent. Le maintien
 est limité à huit secondes, avec une seule voix de corne active.
+Les appels IA réutilisent cette synthèse dans une voix distincte, spatialisée par
+un `PannerNode` à distance inverse. L’arbitre de trafic autorise une seule navette
+à la fois, pendant 5 secondes, après 30 secondes d’attente du joueur puis toutes
+les 25 secondes. Une demande concurrente attend son tour. Le pas de simulation
+pilote les signaux, et la libération du quai, la pause ou le silence les coupent.
+La corne manuelle du joueur prend la priorité sur cette voix.
 Les paramètres moteurs et météo viennent de la physique, sans animation sonore
 indépendante du navire. Une seule instance gère aussi les alertes du radar et des
 hauts-fonds ; l'ancien générateur d'alertes du panneau maritime a été regroupé ici.
