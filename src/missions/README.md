@@ -4,6 +4,13 @@
 horaires, durées, météo, seuils de sécurité, critères d'accostage et commentaires.
 Ajouter une définition dans `MISSIONS` la rend disponible dans le catalogue du menu.
 
+Le joueur choisit l’état de la mer dans le briefing de chaque mission, y compris
+le service Saint-Malo–Dinard, puis peut le modifier en navigation dans
+Réglages → Mer et navigation. Le dernier choix est conservé pour les prochains
+départs et dans la sauvegarde de la mission active. Le moteur météo garde ses
+transitions progressives de vent, vagues et visibilité ; les horaires de mission
+continuent d’utiliser leur horloge habituelle.
+
 ## Excursions de la Côte d’Émeraude
 
 `excursions.ts` définit trois missions finies : Saint-Malo → Cézembre, Fort La Latte

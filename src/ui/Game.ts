@@ -68,13 +68,19 @@ export class Game {
     },options);
     this.dialog.addEventListener('cancel',e=>{e.preventDefault();if(this.started&&!this.mission?.finished)this.resume();},options);
     this.dialog.addEventListener('keydown',e=>{e.stopPropagation();},options);
+    this.dialog.addEventListener('change',e=>{
+      const select=e.target as HTMLSelectElement;if(select.id!=='mission-sea')return;
+      const sea=this.settingsPanel.querySelector<HTMLSelectElement>('#sea-state')!;
+      sea.value=select.value;sea.dispatchEvent(new Event('change',{bubbles:true}));
+      const summary=this.dialog.querySelector('#mission-weather-summary');if(summary)summary.textContent=this.missionWeather();
+    },options);
     // Reuse the existing settings controls inside the modal, including their handlers.
     this.dialog.addEventListener('click',e=>{if((e.target as HTMLElement).closest('#settings-close')){e.preventDefault();e.stopImmediatePropagation();this.show('home');}}, {...options,capture:true});
     const savePreferences=()=>{
       if(!this.mission||this.mode==='free')this.store.data.marine=readMarine(this.world.vessel.marine);
+      this.store.data.marine.sea=this.world.vessel.marine.sea;
       this.store.data.marine.sound=this.world.vessel.marine.sound;
-      this.store.data.instruments=this.marinePanel.captureLayout();
-      void this.store.save().then(()=>this.storageStatus());
+      this.snapshot();
     };
     this.settingsPanel.addEventListener('change',savePreferences,options);
     document.addEventListener('visibilitychange',()=>{if(document.hidden&&this.started&&!this.paused){this.show('home');}},options);
@@ -119,10 +125,10 @@ export class Game {
     const d=this.mission?.definition??MALO_DINARD;
     const serviceScreen=this.serviceMarkup(screen);if(serviceScreen)return serviceScreen;
     if(screen==='excursions')return title('Excursion et ambiance')+'<p>Choisissez les commentaires, préparez votre excursion et réglez les volumes. La navigation est en pause pendant la préparation.</p>';
-    if(screen==='settings')return title('Paramètres')+'<p>Les réglages sont sauvegardés sur cet appareil. Pendant une mission, les conditions du briefing restent fixes.</p>';
+    if(screen==='settings')return title('Paramètres')+'<p>Les réglages sont sauvegardés sur cet appareil. L’état de la mer peut être modifié avant le départ et pendant toutes les missions.</p>';
     if(screen==='free')return title('Navigation libre')+`<p>Explorez Saint-Malo, Dinard, Cézembre, Fort La Latte et le Cap Fréhel. Les caps sont des points d’observation en mer.</p>${this.weatherChoices()}<label for="free-start">Point de départ<select id="free-start">${COAST_DESTINATIONS.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')}</select></label><button class="game-primary" data-action="start-free">Prendre la barre</button>`;
     if(screen==='missions')return title('Missions')+`<p>Choisissez votre ligne et prenez la barre.</p>${MISSIONS.map(m=>`<article class="mission-choice"><h3>${m.id===MALO_DINARD.id?'Saint-Malo ↔ Dinard':escape(m.title)}</h3><p>${m.id===MALO_DINARD.id?'Service continu : allers-retours illimités, passagers renouvelés à chaque escale.':escape(m.description)}</p><p>${m.id===MALO_DINARD.id?'5–6 min par traversée':`Environ ${Math.round(m.targetSeconds/60)} min de jeu`} · ${m.cruiseKnots} nd conseillés${m.excursion?` · ${m.route.length} étapes`: ""}</p>${m.excursion?.adaptation?`<p>${escape(m.excursion.adaptation)}</p>`:''}<button data-action="start-mission" data-mission="${m.id}">${m.id===MALO_DINARD.id?'Préparer le service':'Préparer l’excursion'}</button></article>`).join('')}`;
-    if(screen==='briefing')return title(escape(d.title))+`<p>${escape(d.description)}</p><div class="briefing-layout">${this.routeMarkup(d)}<div><h3>Feuille de traversée</h3><dl class="game-facts"><div><dt>Départ</dt><dd>${hourLabel(d.departureHour)} · ${escape(d.origin.name)}</dd></div><div><dt>Arrivée cible</dt><dd>${hourLabel(d.departureHour+d.targetSeconds/3600)} · ${escape(d.destination.name)}</dd></div><div><dt>Conditions</dt><dd>${SEA_LABELS[d.sea]} · vent ${SEA[d.sea][0]} nd de ${d.windDirection}° · vagues ${SEA[d.sea][1].toLocaleString('fr-FR')} m</dd></div><div><dt>Durée de jeu</dt><dd>Cible ${clock(d.targetSeconds)} · temps physique normal</dd></div></dl></div></div>${this.itineraryMarkup(d)}<p>Amarres en place. Chargez les ${d.passengers} passagers, puis larguez les amarres. À l’arrivée, rejoignez la zone ocre de ${dockingRules(d).distance} m de rayon à moins de ${dockingRules(d).speedKnots.toLocaleString('fr-FR')} nd, puis appuyez sur « Amarrer et débarquer ». Aucun cap ni délai de stabilité n’est imposé. Les boudins protègent les appuis latéraux au quai ; les chocs par l’avant ou l’arrière restent des contacts.</p><p>La note dépend de la ponctualité, de la sécurité, du confort et des manœuvres. Les reprises au point sûr restent possibles avec une pénalité de manœuvre.</p><button class="game-primary" data-action="board">Embarquer les passagers</button>`;
+    if(screen==='briefing')return title(escape(d.title))+`<p>${escape(d.description)}</p>${this.missionSeaMarkup()}<div class="briefing-layout">${this.routeMarkup(d)}<div><h3>Feuille de traversée</h3><dl class="game-facts"><div><dt>Départ</dt><dd>${hourLabel(d.departureHour)} · ${escape(d.origin.name)}</dd></div><div><dt>Arrivée cible</dt><dd>${hourLabel(d.departureHour+d.targetSeconds/3600)} · ${escape(d.destination.name)}</dd></div><div><dt>Conditions</dt><dd id="mission-weather-summary">${this.missionWeather()}</dd></div><div><dt>Durée de jeu</dt><dd>Cible ${clock(d.targetSeconds)} · temps physique normal</dd></div></dl></div></div>${this.itineraryMarkup(d)}<p>Amarres en place. Chargez les ${d.passengers} passagers, puis larguez les amarres. À l’arrivée, rejoignez la zone ocre de ${dockingRules(d).distance} m de rayon à moins de ${dockingRules(d).speedKnots.toLocaleString('fr-FR')} nd, puis appuyez sur « Amarrer et débarquer ». Aucun cap ni délai de stabilité n’est imposé. Les boudins protègent les appuis latéraux au quai ; les chocs par l’avant ou l’arrière restent des contacts.</p><p>La note dépend de la ponctualité, de la sécurité, du confort et des manœuvres. Les reprises au point sûr restent possibles avec une pénalité de manœuvre.</p><button class="game-primary" data-action="board">Embarquer les passagers</button>`;
     if(screen==='result'&&this.mission?.result){const r=this.mission.result;return title(r.completed?'Bienvenue à '+escape(d.destination.name.split(' · ')[0]):'Mission interrompue')+`<p>${escape(r.reason)}</p><div class="mission-score"><strong>${r.score}<small> / 100</small></strong><span>${escape(r.grade)}</span></div><dl class="score-breakdown">${[['Ponctualité',r.punctuality],['Sécurité',r.safety],['Confort',r.comfort],['Manœuvres',r.manoeuvres]].map(([label,value])=>`<div><dt>${label}</dt><dd>${value} / 100</dd></div>`).join('')}</dl><p>${r.passengers} passagers arrivés · ${clock(r.elapsed)} · ${r.metrics.contacts} contacts · ${r.metrics.recoveries} reprises</p><div class="game-buttons"><button data-action="restart">Recommencer</button>${!r.completed?'<button data-action="checkpoint">Reprendre au point sûr</button>':''}<button data-action="progress">Voir la progression</button></div>`;}
     if(screen==='progress'){
       const s=this.store.data.stats;return title('Progression locale')+`<dl class="score-breakdown">${[['Traversées réussies',s.completed],['Tentatives interrompues',s.failed],['Passagers transportés',s.passengers],['Meilleure note',`${s.best} / 100`],['Temps en mission',clock(s.seconds)],['Temps en navigation libre',clock(s.freeSeconds)],['Distance en mode libre',`${(s.freeDistance/1852).toFixed(2)} milles`]].map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl><h3>Dernières traversées</h3>${this.store.data.history.length?`<ul class="game-history">${this.store.data.history.slice(0,8).map(r=>`<li><span>${escape(typeof r.routeTitle==='string'?r.routeTitle:MISSIONS.find(m=>m.id===r.missionId)?.title??r.missionId)}<br><small>${escape(r.grade)} · ${clock(r.elapsed)}</small></span><strong>${r.score} / 100</strong></li>`).join('')}</ul>`:'<p>Aucune traversée terminée. Votre première mission vous attend.</p>'}<p>Sauvegarde IndexedDB sur ce navigateur, sans compte.</p>`;
@@ -134,6 +140,14 @@ export class Game {
     const m=this.store.data.marine;
     return `<div class="free-choices"><label for="free-sea">État de mer<select id="free-sea">${Object.keys(SEA).map(k=>`<option value="${k}" ${k===m.sea?'selected':''}>${SEA_LABELS[k as keyof typeof SEA]}</option>`).join('')}</select></label><label for="free-hour">Heure<input id="free-hour" type="number" min="0" max="23" value="${Math.floor(m.hour)}"></label><label for="free-wind">Vent venant de (°)<input id="free-wind" type="number" min="0" max="359" value="${Math.round(m.targetDirection)}"></label><label class="check"><input id="free-damage" type="checkbox" ${m.damageEnabled?'checked':''}>Dégâts activés</label></div><p>Les réglages détaillés restent accessibles pendant la navigation.</p>`;
   }
+  private missionWeather():string {
+    const m=this.world.vessel.marine,sea=SEA[m.sea];
+    return `${SEA_LABELS[m.sea]} · vent visé ${sea[0]} nd de ${Math.round(m.targetDirection)}° · vagues visées ${sea[1].toLocaleString('fr-FR')} m`;
+  }
+  private missionSeaMarkup():string {
+    const sea=this.world.vessel.marine.sea;
+    return `<label for="mission-sea">État de la mer au départ</label><select id="mission-sea">${(Object.keys(SEA) as (keyof typeof SEA)[]).map(key=>`<option value="${key}" ${key===sea?'selected':''}>${SEA_LABELS[key]}</option>`).join('')}</select><p>Vous pouvez aussi changer la mer pendant la mission dans Réglages → Mer et navigation. Les vagues, le vent et la visibilité évoluent progressivement vers le nouvel état.</p>`;
+  }
   private itineraryMarkup(d:MissionDefinition):string {
     if(!d.excursion)return '';
     return `<p>${escape(d.excursion.reference)}. <a href="${d.excursion.source}" target="_blank" rel="noopener">Voir le circuit de la compagnie</a>.</p>${d.excursion.adaptation?`<p>${escape(d.excursion.adaptation)}</p>`:''}<p>Distances et durées adaptées au jeu. Validez chaque point de passage dans l’ordre. Le cercle vert indique la prochaine étape ; aux panoramas, restez à moins de 5 nd pendant le temps indiqué.</p><ol class="excursion-itinerary">${d.route.map(p=>`<li>${escape(p.label)}${p.dwellSeconds?` · panorama ${p.dwellSeconds} s à moins de ${p.maxKnots} nd`:''}</li>`).join('')}</ol>`;
@@ -144,7 +158,7 @@ export class Game {
     const s=service.state,d=service.mission.definition;
     if(screen==='briefing')return title('Service Saint-Malo ↔ Dinard')+`
       <p>Assurez autant d’allers-retours que vous le souhaitez. À chaque arrivée, les passagers débarquent puis de nouveaux voyageurs embarquent. Vous décidez quand repartir et quand terminer votre service.</p>
-      <div class="briefing-layout">${this.routeMarkup(d)}<dl class="game-facts"><div><dt>Premier départ</dt><dd>Saint-Malo → Dinard · ${d.passengers} voyageurs</dd></div><div><dt>Capacité</dt><dd>270 passagers maximum · fréquentation variable</dd></div><div><dt>Escale</dt><dd>2 min après l’arrivée prévue ou réelle si elle est plus tardive, puis départ à votre rythme</dd></div><div><dt>Navigation</dt><dd>Créneaux de 6 min · ${d.cruiseKnots} nd conseillés · trajectoire libre</dd></div></dl></div>
+      ${this.missionSeaMarkup()}<div class="briefing-layout">${this.routeMarkup(d)}<dl class="game-facts"><div><dt>Premier départ</dt><dd>Saint-Malo → Dinard · ${d.passengers} voyageurs</dd></div><div><dt>Capacité</dt><dd>270 passagers maximum · fréquentation variable</dd></div><div><dt>Escale</dt><dd>2 min après l’arrivée prévue ou réelle si elle est plus tardive, puis départ à votre rythme</dd></div><div><dt>Navigation</dt><dd>Créneaux de 6 min · ${d.cruiseKnots} nd conseillés · trajectoire libre</dd></div></dl></div>
       <p>L’horloge de bord avance avec le jeu. Une arrivée anticipée conserve le créneau restant avant l’escale de 2 min. En retard, continuez jusqu’au quai : le créneau suivant tourne sans changer votre destination. Après les transferts, « Passer l’attente » avance l’heure au prochain départ autorisé.</p>
       <p>Amarrez dans le cercle ocre de ${dockingRules(d).distance} m, à moins de ${dockingRules(d).speedKnots} nd. Les appuis latéraux au quai restent protégés par les boudins. Le service continue malgré les retards ou incidents ; leurs conséquences restent actives sur le navire et la satisfaction.</p>
       <p>« Terminer le service » se trouve dans le journal de bord et le menu de pause. Votre service est sauvegardé automatiquement sur cet appareil.</p><button class="game-primary" data-action="board">Embarquer les passagers</button>`;
@@ -198,7 +212,7 @@ export class Game {
     this.mission=this.service?.mission??new Mission(definition);this.mode='mission';this.started=false;this.lastPhase=undefined;
     this.world.vessel.dynamics.reset(definition.origin.berth);this.world.vessel.marine.damage=0;this.world.vessel.moored=true;
     this.world.passengers.reset();this.immersion.reset();this.immersion.guide.destination=this.service?.destinationPort;
-    this.applyMarine({...this.store.data.marine,sea:definition.sea,hour:definition.departureHour,targetDirection:definition.windDirection,tidePhase:0,evolving:true,dayCycle:false,tideCycle:true});
+    this.applyMarine({...this.store.data.marine,hour:definition.departureHour,targetDirection:definition.windDirection,tidePhase:0,evolving:true,dayCycle:false,tideCycle:true});
     this.resetView();this.setMissionRoute();this.updatePassengers(0);this.show('briefing');
   }
   private resetView():void {
@@ -420,7 +434,8 @@ export class Game {
   }
   private lockMissionSettings():void {
     const locked=this.mode==='mission'&&!!this.mission&&!this.mission.finished;
-    this.settingsPanel.querySelectorAll<HTMLInputElement|HTMLButtonElement>('#sea-state,#wind-direction,#marine-hour,#tide-phase,[data-marine]:not([data-marine="sound"])').forEach(el=>{el.disabled=locked;});
+    this.settingsPanel.querySelector<HTMLSelectElement>('#sea-state')!.disabled=false;
+    this.settingsPanel.querySelectorAll<HTMLInputElement|HTMLButtonElement>('#wind-direction,#marine-hour,#tide-phase,[data-marine]:not([data-marine="sound"])').forEach(el=>{el.disabled=locked;});
   }
   private snapshot():void {
     const m=this.mission,v=this.world.vessel;
