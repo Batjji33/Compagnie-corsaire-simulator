@@ -1,11 +1,11 @@
-import { BufferGeometry, Float32BufferAttribute, Group, InstancedMesh, Mesh, Shape, ShapeGeometry, Vector3 } from 'three';
+import { Box3, BufferGeometry, Float32BufferAttribute, Group, InstancedMesh, Mesh, Shape, ShapeGeometry, Sphere, Vector3 } from 'three';
 import { BAY, BUOYS, DOCKS, LANDS, ROCKS, inside, random } from './geography';
 import type { Land, Point } from './geography';
 import type { Quality } from '../config';
 import { createMaterials } from './Materials';
 import { Batch } from './Batch';
 
-interface Zone { root: Group; detail: Group; center: Vector3 }
+interface Zone { root: Group; detail: Group; center: Vector3; bounds: Sphere }
 export class BayEnvironment {
   readonly root = new Group();
   private palette = createMaterials();
@@ -15,12 +15,14 @@ export class BayEnvironment {
   constructor(quality: Quality) {
     this.quality = quality;
     for (const land of LANDS) this.root.add(this.terrain(land));
-    this.buildMalo(); this.buildDinard(); this.buildIslands(); this.buildSeamarks(); this.buildHinterland();
+    this.buildMalo(); this.buildDinard(); this.buildIslands(); this.buildSeamarks(); this.buildHinterland(); this.buildEmeraldCoast();
   }
   private terrain(land: Land): Group {
     const group = new Group(); group.name = land.name;
     const center = land.outline.reduce((p,v) => [p[0]+v[0]/land.outline.length,p[1]+v[1]/land.outline.length], [0,0]);
-    const rings = [{ scale:1.05,y:-12 },{ scale:1.02,y:0.7 },{ scale:1,y:2 },{ scale:.96,y:land.height }];
+    const rings = land.cliff
+      ? [{scale:1.005,y:-12},{scale:1.003,y:1},{scale:1,y:land.height*.75},{scale:.998,y:land.height}]
+      : [{ scale:1.05,y:-12 },{ scale:1.02,y:0.7 },{ scale:1,y:2 },{ scale:.96,y:land.height }];
     const at = (p: Point, scale: number) => [center[0]+(p[0]-center[0])*scale, center[1]+(p[1]-center[1])*scale];
     for(let r=0;r<rings.length-1;r++) {
       const vertices:number[]=[], uv:number[]=[];
@@ -33,10 +35,10 @@ export class BayEnvironment {
         for(const v of [...quad].reverse()) { vertices.push(...v); uv.push(v[0]/32,v[2]/32); }
       }
       const geometry = new BufferGeometry(); geometry.setAttribute('position',new Float32BufferAttribute(vertices,3)); geometry.setAttribute('uv',new Float32BufferAttribute(uv,2)); geometry.computeVertexNormals();
-      group.add(new Mesh(geometry,this.palette.materials[r===1?'sand':'rock']));
+      group.add(new Mesh(geometry,this.palette.materials[land.cliff?'cliff':r===1?'sand':'rock']));
     }
     const shape = new Shape();
-    land.outline.forEach((p,i) => { const [x,z]=at(p,.96); if(i===0) shape.moveTo(x,-z); else shape.lineTo(x,-z); }); shape.closePath();
+    land.outline.forEach((p,i) => { const [x,z]=at(p,rings[3].scale); if(i===0) shape.moveTo(x,-z); else shape.lineTo(x,-z); }); shape.closePath();
     const geometry = new ShapeGeometry(shape); geometry.rotateX(-Math.PI/2); geometry.translate(0,land.height,0);
     const positions=geometry.getAttribute('position'), uvs=geometry.getAttribute('uv');
     for(let i=0;i<positions.count;i++) uvs.setXY(i,positions.getX(i)/180,positions.getZ(i)/180);
@@ -45,7 +47,8 @@ export class BayEnvironment {
   }
   private zone(name: string, base: Batch, detail: Batch, x: number, z: number) {
     const root=base.build(this.palette.materials), near=detail.build(this.palette.materials);
-    root.name=name; root.add(near); this.root.add(root); this.zones.push({root,detail:near,center:new Vector3(x,0,z)});
+    root.name=name; root.add(near); this.root.add(root);
+    this.zones.push({root,detail:near,center:new Vector3(x,0,z),bounds:new Box3().setFromObject(root).getBoundingSphere(new Sphere())});
   }
   private house(base: Batch, detail: Batch, x: number, z: number, y: number, w: number, h: number, d: number, angle: number, tint: number, villa=false) {
     base.add('box','facade',x,y+h/2,z,w,h,d,angle,tint);
@@ -140,7 +143,7 @@ export class BayEnvironment {
       detail.add('box','dark',px,2,pz,3,4,3);
     }
     base.add('box','white',lx,9,lz,16,9,12); base.add('roof','roof',lx,13.5,lz,18,5,14);
-    for(let i=0;i<(index===0?4:9);i++) {
+    for(let i=0;i<(index===0?4:index===1?9:0);i++) {
       const top=4+i*(index===0?1.5:2.6);
       base.add('box','stone',lx-(index===1?i*9:0),top/2,lz-(index===0?i*8:0),index===0?14:10,top,index===0?10:14);
     }
@@ -170,6 +173,71 @@ export class BayEnvironment {
       batch.add('cylinder',color,0,1,0,6,3,6); batch.add('cylinder',color,0,5,0,1.2,7,1.2);
       batch.add(buoy.red?'cylinder':'cone',color,0,10,0,3,3,3);
       const group=batch.build(this.palette.materials); group.position.set(buoy.x,0,buoy.z); group.name='Balisage fictif'; this.root.add(group); this.buoyGroups.push(group);
+    }
+  }
+  private buildEmeraldCoast() {
+    for(const id of ['cezembre','conchee','harbour-fort','agot','ebihens','frehel','latte']) {
+      const land=LANDS.find(l=>l.id===id)!,base=new Batch(),detail=new Batch(),rng=random(land.name.length*97);
+      const cx=land.outline.reduce((s,p)=>s+p[0],0)/land.outline.length;
+      const cz=land.outline.reduce((s,p)=>s+p[1],0)/land.outline.length;
+      // Small rocks and vegetation belong to the local detail batch, never global draw calls.
+      for(let i=0;i<land.outline.length;i++) {
+        const a=land.outline[i],b=land.outline[(i+1)%land.outline.length],length=Math.hypot(b[0]-a[0],b[1]-a[1]);
+        if(length>1300)continue;
+        for(let d=0;d<length;d+=25+rng()*55) {
+          const x=a[0]+(b[0]-a[0])*d/length,z=a[1]+(b[1]-a[1])*d/length;
+          // Cliff buttresses extend from below low tide to the heath, with pink sandstone strata.
+          if(land.cliff) {
+            base.add('rock','cliff',x,land.height*.3-4,z,22+rng()*32,land.height*(.65+rng()*.45),20+rng()*14,rng(),0xd5bfb1);
+            detail.add('box','cliff',x,land.height*.6+rng()*3,z,22,2,12,Math.atan2(b[0]-a[0],b[1]-a[1]),0xd1b1a0);
+          } else detail.add('rock','rock',x,-1,z,22+rng()*16,17,24,rng()*6);
+          const tx=cx+(x-cx)*.88,tz=cz+(z-cz)*.88;
+          if(inside(tx,tz,land.outline))detail.add('rock','foliage',tx,land.height+1,tz,18,3,15,0,i%2?0xa8967e:0x78835e);
+        }
+      }
+      if(id==='cezembre') {
+        this.dock(base,detail,2);
+        this.house(base,detail,-2140,-4240,38,32,8,18,.12,0xe6ddc7);
+        // Two rounded ridges and low wartime concrete remnants, kept behind the south beach.
+        for(const [x,z,w,h] of [[-2250,-4430,260,20],[-1750,-4400,240,13]]) {
+          base.add('rock','grass',x,37,z,w,h,210,0,0xa1a77d);
+          detail.add('box','stone',x,43,z,19,5,12,.2,0x8d9088);
+        }
+      }
+      if(id==='frehel') {
+        // Modern square lighthouse (~32 m above the plateau), lantern and older Vauban tower.
+        base.add('box','stone',-11660,76,-4390,58,12,24,0,0xd4bba2);
+        base.add('box','stone',-11660,83,-4390,12,26,12,0,0xc9b49b);
+        base.add('cylinder','town',-11660,97,-4390,17,2,17);
+        base.add('cylinder','dark',-11660,99.5,-4390,10,4,10);
+        base.add('cone','roof',-11660,102,-4390,13,1.7,13);
+        base.add('cylinder','stone',-11720,78,-4440,11,16,11);
+        base.add('cone','roof',-11720,88,-4440,13,5,13);
+        for(let y=81;y<95;y+=7)detail.add('box','dark',-11653.8,y,-4390,.3,3,2);
+      }
+      if(id==='latte') {
+        const corners:Point[]=[[-10400,-3070],[-10370,-3150],[-10280,-3180],[-10215,-3100],[-10265,-2990],[-10350,-2990]];
+        for(let i=0;i<corners.length;i++) {
+          this.wall(base,corners[i],corners[(i+1)%corners.length],36,12,6);
+          base.add('cylinder','stone',corners[i][0],44,corners[i][1],14,16,14);
+          for(let t=0;t<1;t+=.14)detail.add('box','stone',corners[i][0]*(1-t)+corners[(i+1)%corners.length][0]*t,50,corners[i][1]*(1-t)+corners[(i+1)%corners.length][1]*t,3,3,3);
+        }
+        base.add('cylinder','stone',-10290,49,-3110,23,26,23);
+        base.add('cone','roof',-10290,68,-3110,26,12,26);
+        this.house(base,detail,-10330,-3050,36,42,10,19,.4,0xbeb39b);
+        this.wall(base,[-10470,-2870],[-10360,-3010],32,4,9);
+        base.add('box','wood',-10400,37,-2960,10,2,30,.5);
+      }
+      if(id==='conchee'||id==='harbour-fort') {
+        base.add('box','stone',cx,15,cz,90,19,48,.25);
+        for(const side of [-1,1])base.add('cylinder','stone',cx+side*37,15,cz,38,19,48);
+        this.house(base,detail,cx,cz,24,47,7,22,.25,0xc4baa0);
+      }
+      if(id==='ebihens') {
+        base.add('cylinder','stone',-7040,35,-1010,16,18,16);
+        base.add('cone','roof',-7040,47,-1010,19,7,19);
+      }
+      this.zone(land.name,base,detail,id==='frehel'?-11660:cx,id==='frehel'?-4390:cz);
     }
   }
   private buildHinterland() {
@@ -207,10 +275,11 @@ export class BayEnvironment {
     this.root.add(coastline.build(this.palette.materials));
   }
   setQuality(quality: Quality) { this.quality=quality; }
-  update(camera: Vector3, time: number) {
+  update(camera: Vector3, time: number, visibility=11000) {
     for(const zone of this.zones) {
       const distance=camera.distanceTo(zone.center);
       zone.detail.visible=distance<BAY.detailDistance[this.quality];
+      zone.root.visible=camera.distanceTo(zone.bounds.center)-zone.bounds.radius<visibility;
       // Coastal silhouettes and terrain stay present; only small architectural details are culled.
     }
     this.buoyGroups.forEach((group,i)=> { group.position.y=Math.sin(time*1.2+i)*.23; group.rotation.z=Math.sin(time*.8+i)*.025; });

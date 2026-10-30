@@ -1,3 +1,4 @@
+import { BAY } from '../world/geography.ts';
 export interface TourComment {id:string;title:string;text:string;x:number;z:number;radius:number;source:string}
 const MALO='https://www.saint-malo-tourisme.com/nos-tresors-preserves/saint-malo-le-bijou-corsaire/faire-le-tour-des-remparts-de-saint-malo/';
 const FORTS='https://www.saint-malo-tourisme.com/vivre-comme-chez-nous/a-voir-a-faire/culture-patrimoine/acces-aux-forts-et-aux-ilots/';
@@ -15,7 +16,7 @@ export function validateComment(value:unknown):TourComment|null {
   if(!value||typeof value!=='object')return null;const v=value as Record<string,unknown>;
   if(typeof v.id!=='string'||!v.id||v.id.length>100||typeof v.title!=='string'||!v.title.trim()||v.title.length>100||typeof v.text!=='string'||!v.text.trim()||v.text.length>1500)return null;
   for(const k of ['x','z','radius'])if(typeof v[k]!=='number'||!Number.isFinite(v[k]))return null;
-  if(Math.abs(v.x as number)>5200||Math.abs(v.z as number)>5200||(v.radius as number)<30||(v.radius as number)>1500)return null;
+  if((v.x as number)<BAY.minX||(v.x as number)>BAY.maxX||(v.z as number)<BAY.minZ||(v.z as number)>BAY.maxZ||(v.radius as number)<30||(v.radius as number)>1500)return null;
   return {id:v.id,title:v.title.trim(),text:v.text.trim(),x:v.x as number,z:v.z as number,radius:v.radius as number,source:typeof v.source==='string'&&v.source.startsWith('https://')?v.source:''};
 }
 export class TourGuide {

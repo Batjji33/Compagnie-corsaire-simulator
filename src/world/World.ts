@@ -139,7 +139,8 @@ export class World {
     this.camera.position.add(this.lastTarget);
     this.camera.position.y=Math.max(groundHeight(this.camera.position.x,this.camera.position.z)+8,this.camera.position.y);
     } else this.vesselCamera.update(dt);
-    this.environment.update(this.camera.position,time);
+    this.sky.position.copy(this.camera.position);
+    this.environment.update(this.camera.position,time,m.visibility);
     this.ocean.update(m.time+this.vessel.waterOffset,this.controls.target,this.vessel.water,this.vessel.waterOffset,m.tide,m.waves,this.vessel.visual);
     this.wake.render(m.time+this.vessel.waterOffset,m);
     this.renderer.render(this.scene, this.camera);

@@ -2,6 +2,7 @@ import { MathUtils, PerspectiveCamera, Vector3 } from 'three';
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { Vessel } from '../ships/Vessel';
 import { BOAT } from '../ships/parameters';
+import { BAY } from './geography';
 export type CameraMode='external'|'cockpit'|'explore';
 /** Follows hull heave while keeping the horizon free of roll and pitch. */
 export class VesselCamera {
@@ -16,7 +17,7 @@ export class VesselCamera {
     this.mode=mode;this.vessel.model.setCockpit(mode==='cockpit');
     this.controls.enabled=mode!=='cockpit';this.controls.enablePan=mode==='explore';
     this.controls.minDistance=mode==='external'?BOAT.camera.minDistance:25;
-    this.controls.maxDistance=mode==='external'?BOAT.camera.maxDistance:4800;
+    this.controls.maxDistance=mode==='external'?BOAT.camera.maxDistance:BAY.maxCameraDistance;
     this.camera.fov=mode==='cockpit'?65:55;this.camera.updateProjectionMatrix();
     const s=this.vessel.visual,y=this.vessel.root.position.y;this.previous.set(s.x,y,s.z);
     if(mode==='external') {

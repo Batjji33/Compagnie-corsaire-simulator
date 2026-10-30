@@ -1,4 +1,5 @@
 import type { World } from '../world/World';
+import { BAY } from '../world/geography';
 import type { GameStore } from '../saves/GameStore';
 import { MaritimeAudio } from '../audio/MaritimeAudio';
 import { TourGuide,validateComment } from '../excursions/comments';
@@ -37,7 +38,7 @@ export class Immersion {
       <details class="tour-editor"><summary>Modifier ou créer un commentaire</summary>
       <label for="tour-title">Titre</label><input id="tour-title" maxlength="100">
       <label for="tour-text">Texte français</label><textarea id="tour-text" maxlength="1500" rows="5"></textarea>
-      <div class="tour-coordinates"><label>Est (m)<input id="tour-x" type="number" min="-5200" max="5200"></label><label>Sud (m)<input id="tour-z" type="number" min="-5200" max="5200"></label><label>Rayon (m)<input id="tour-radius" type="number" min="30" max="1500"></label></div>
+      <div class="tour-coordinates"><label>Est (m)<input id="tour-x" type="number" min="${BAY.minX}" max="${BAY.maxX}"></label><label>Sud (m)<input id="tour-z" type="number" min="${BAY.minZ}" max="${BAY.maxZ}"></label><label>Rayon (m)<input id="tour-radius" type="number" min="30" max="1500"></label></div>
       <div class="game-buttons"><button id="tour-save">Enregistrer</button><button id="tour-new">Nouveau à ma position</button></div><p id="tour-editor-status" role="status"></p></details>
       <h3>Ambiance sonore</h3><label class="check"><input id="audio-enabled" type="checkbox">Activer les sons</label>
       ${[['master','Volume général'],['engines','Moteurs'],['waves','Vagues'],['wind','Vent'],['port','Port et oiseaux'],['alerts','Avertissements maritimes'],['horn','Corne de brume'],['voice','Voix des annonces']].map(([key,label])=>`<label class="volume-control" for="volume-${key}">${label}<output id="volume-${key}-value"></output><input id="volume-${key}" data-volume="${key}" type="range" min="0" max="100" step="1"></label>`).join('')}

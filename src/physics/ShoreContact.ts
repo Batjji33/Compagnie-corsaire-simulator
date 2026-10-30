@@ -3,7 +3,7 @@ import type { Point } from '../world/geography.ts';
 import { BOAT } from '../ships/parameters.ts';
 import type { ExternalForce, VesselState } from './VesselDynamics.ts';
 
-interface Obstacle {name:string;kind:'shore'|'quay';polygon:readonly Point[]}
+interface Obstacle {name:string;kind:'shore'|'quay';polygon:readonly Point[];bounds?:{minX:number;maxX:number;minZ:number;maxZ:number}}
 /** Hull contacts shared by physics and radar; damage is handled by Marine. */
 export class ShoreContact {
   readonly obstacles:Obstacle[]=[];
@@ -13,13 +13,14 @@ export class ShoreContact {
   constructor() {
     for(const land of LANDS) {
       const center=land.outline.reduce((sum,p)=>[sum[0]+p[0]/land.outline.length,sum[1]+p[1]/land.outline.length],[0,0]);
-      this.obstacles.push({name:land.name,kind:'shore',polygon:land.outline.map(p=>[center[0]+(p[0]-center[0])*1.02,center[1]+(p[1]-center[1])*1.02])});
+      this.obstacles.push({name:land.name,kind:'shore',polygon:land.outline.map(p=>[center[0]+(p[0]-center[0])*(land.cliff?1.005:1.02),center[1]+(p[1]-center[1])*(land.cliff?1.005:1.02)])});
     }
     for(const [i,dock] of DOCKS.entries()) {
       const [x,z]=dock.point,w=i===0?65:22,d=i===0?22:65;
       this.rectangle(dock.name,x,z,w,d);
       const [lx,lz]=dock.land;
-      this.rectangle(dock.name,(x+lx)/2,(z+lz)/2,i===0?18:Math.abs(x-lx),i===0?Math.abs(z-lz):18);
+      const length=Math.hypot(x-lx,z-lz),nx=(z-lz)/length*9,nz=-(x-lx)/length*9;
+      this.obstacles.push({name:dock.name,kind:'quay',polygon:[[lx+nx,lz+nz],[x+nx,z+nz],[x-nx,z-nz],[lx-nx,lz-nz]]});
     }
     for(const [a,b,width] of [ [[1370,220],[1580,430],25],[[1580,430],[1580,810],25],[[1100,1100],[990,850],25],[[-1040,825],[-880,860],22] ] as const) {
       const length=Math.hypot(b[0]-a[0],b[1]-a[1]),nx=(b[1]-a[1])/length*width/2,nz=-(b[0]-a[0])/length*width/2;
@@ -38,6 +39,8 @@ export class ShoreContact {
       const vx=sin*s.surge+cos*(s.sway+s.yawRate*forward),vz=-cos*s.surge+sin*(s.sway+s.yawRate*forward);
       let penetration=0,nx=0,nz=0;
       for(const obstacle of this.obstacles) {
+        const b=obstacle.bounds??= {minX:Math.min(...obstacle.polygon.map(p=>p[0])),maxX:Math.max(...obstacle.polygon.map(p=>p[0])),minZ:Math.min(...obstacle.polygon.map(p=>p[1])),maxZ:Math.max(...obstacle.polygon.map(p=>p[1]))};
+        if(x+radius<b.minX||x-radius>b.maxX||z+radius<b.minZ||z-radius>b.maxZ)continue;
         let distance=Infinity,px=0,pz=0;
         for(let i=0;i<obstacle.polygon.length;i++) {
           const a=obstacle.polygon[i],b=obstacle.polygon[(i+1)%obstacle.polygon.length],dx=b[0]-a[0],dz=b[1]-a[1];

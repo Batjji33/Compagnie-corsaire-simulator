@@ -160,7 +160,11 @@ kbd { font: inherit; color: var(--muted); margin-left: auto; }
 #repair-status:empty { display: none; }
 @keyframes repair-confirmation { 0% { box-shadow: 0 0 0 0 #90d8c288; } 100% { box-shadow: 0 0 0 12px #90d8c200; } }
 @media (prefers-reduced-motion: reduce) { #repair-hull.repair-complete { animation: none; } }
-#bay-map { top: calc(var(--top) + 72px); right: var(--right); width: 330px; max-width: calc(100% - 32px); max-height: calc(100% - 110px); }
+#bay-map { top: calc(var(--top) + 72px); right: var(--right); width: 440px; max-width: calc(100% - 32px); max-height: calc(100% - 110px); }
+#bay-map a { color: var(--accent); }
+#bay-map #map-scale { margin-bottom: 10px; }
+#bay-map:not([data-local="true"]) text { font-size: 420px; }
+#bay-map[data-local="true"] text { font-size: 130px; }
 #bay-map .panel-title { margin-bottom: 4px; }
 .map-handle { width: 100%; font-size: 11px; color: var(--muted); }
 #bay-map svg, .briefing-map svg { display: block; width: 100%; background: #24434a; border-radius: 8px; }

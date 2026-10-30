@@ -4,7 +4,7 @@ import { random } from './geography';
 /** Small original procedural textures. No network, external licence or per-building texture. */
 export function createMaterials() {
   const textures: CanvasTexture[] = [];
-  function texture(kind: 'stone' | 'facade' | 'roof' | 'ground') {
+  function texture(kind: 'stone' | 'facade' | 'roof' | 'ground' | 'cliff') {
     const canvas = document.createElement('canvas'); canvas.width = canvas.height = 256;
     const ctx = canvas.getContext('2d')!; const rng = random(42);
     ctx.fillStyle = kind === 'roof' ? '#707b83' : '#d6d0bd'; ctx.fillRect(0, 0, 256, 256);
@@ -27,6 +27,13 @@ export function createMaterials() {
       ctx.fillStyle='#9aab77';ctx.fillRect(0,0,256,256);
       for(let i=0;i<5500;i++) { const tone=110+rng()*70;ctx.fillStyle=`rgba(${tone},${tone+12},${tone*.7},.26)`;ctx.fillRect(rng()*256,rng()*256,2+rng()*14,2+rng()*14); }
     }
+    if(kind==='cliff') {
+      ctx.fillStyle='#baa18e';ctx.fillRect(0,0,256,256);
+      for(let i=0;i<1800;i++) {
+        const tone=100+rng()*90;ctx.fillStyle=`rgba(${tone+25},${tone+8},${tone},.3)`;
+        ctx.fillRect(rng()*256,rng()*256,8+rng()*55,1+rng()*4);
+      }
+    }
     const map = new CanvasTexture(canvas); map.colorSpace = SRGBColorSpace;
     map.wrapS = map.wrapT = RepeatWrapping; map.anisotropy = 2;
     textures.push(map); return map;
@@ -40,6 +47,7 @@ export function createMaterials() {
     sand: new MeshStandardMaterial({ color: 0xd7c39a, roughness: 1 }),
     town: new MeshStandardMaterial({ color: 0xa89d87, roughness: 1 }),
     rock: new MeshStandardMaterial({ map: stone, color: 0x797d76, roughness: 1 }),
+    cliff: new MeshStandardMaterial({ map: texture('cliff'), color: 0xd6bfae, roughness: 1 }),
     foliage: new MeshStandardMaterial({ color: 0x395d3e, roughness: 1 }),
     wood: new MeshStandardMaterial({ color: 0x726353, roughness: 0.9 }),
     white: new MeshStandardMaterial({ color: 0xe6e3d5, roughness: 0.7 }),

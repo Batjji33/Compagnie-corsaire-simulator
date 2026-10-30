@@ -1,8 +1,9 @@
+import { EMERALD_LANDS } from './EmeraldCoast.ts';
 /** Authored, approximate metre-space layout, NOT chart or survey data. X east, Z south. */
 export type Point = readonly [number, number];
-export interface Land { id: string; name: string; zone: string; height: number; surface: 'grass' | 'town' | 'sand'; outline: readonly Point[] }
-export const BAY = { minX: -4200, maxX: 4200, minZ: -3600, maxZ: 4200, atlasSize: 512, shoreRange: 150,
-  detailDistance: { low: 1000, medium: 1700, high: 2400 }, minCameraDistance: 25, maxCameraDistance: 4800 } as const;
+export interface Land { id: string; name: string; zone: string; height: number; surface: 'grass' | 'town' | 'sand'; cliff?: boolean; outline: readonly Point[] }
+export const BAY = { minX: -14200, maxX: 4200, minZ: -6800, maxZ: 4200, atlasSize: 1024, shoreRange: 150,
+  detailDistance: { low: 1000, medium: 1700, high: 2400 }, minCameraDistance: 25, maxCameraDistance: 9000 } as const;
 export const LANDS: readonly Land[] = [
   { id: 'intra', name: 'Saint-Malo · Intra-Muros', zone: 'saint-malo', height: 9, surface: 'town', outline: [[660,100],[590,-110],[610,-390],[750,-650],[1010,-730],[1260,-560],[1380,-300],[1330,60],[1100,170],[870,170]] },
   { id: 'sillon', name: 'Le Sillon · côte de Saint-Malo', zone: 'saint-malo', height: 12, surface: 'grass', outline: [[1240,-500],[1580,-680],[1940,-1000],[2370,-1150],[3000,-1500],[4200,-1900],[4900,-1900],[4900,4600],[1400,4600],[1350,2600],[1080,2100],[730,1730],[650,1430],[820,1180],[1100,1100],[1450,1300],[1730,1020],[1720,460],[1380,210],[1300,-80]] },
@@ -13,13 +14,17 @@ export const LANDS: readonly Land[] = [
   { id: 'harbour', name: 'Môle des Noires', zone: 'saint-malo', height: 4, surface: 'town', outline: [[680,100],[650,135],[360,20],[170,-160],[190,-180],[390,-15]] },
   { id: 'ecluse', name: 'Plage de l’Écluse', zone: 'dinard', height: 2.2, surface: 'sand', outline: [[-1900,685],[-1660,765],[-1400,665],[-1370,840],[-1610,950],[-1880,860]] },
   { id: 'bon-secours', name: 'Plage de Bon Secours', zone: 'saint-malo', height: 1.5, surface: 'sand', outline: [[620,-240],[530,-310],[495,-510],[605,-670],[755,-675],[680,-490]] },
+  ...EMERALD_LANDS,
 ];
 export const DOCKS = [
   { id: 'malo', name: 'Saint-Malo · Cale de Dinan', point: [920, 245] as Point, land: [920, 145] as Point, heading: Math.PI, provenance: 'Lieu réel ; cale et dimensions interprétées' },
   { id: 'dinard', name: 'Dinard · Clair de Lune', point: [-970, 1120] as Point, land: [-1165, 1120] as Point, heading: Math.PI / 2, provenance: 'Lieu réel ; ponton et dimensions interprétés' },
+  { id: 'cezembre', name: 'Cézembre · débarcadère', point: [-2050,-3800] as Point, land: [-2200,-4020] as Point, heading: Math.PI / 2, provenance: 'Débarcadère interprété pour le jeu' },
 ] as const;
 export const ROUTE: readonly Point[] = [[920,285],[720,440],[300,650],[-200,850],[-650,1030],[-925,1120]];
 export const BUOYS = [
+  { x: -1850, z: -3710, red: true }, { x: -2320, z: -3630, red: false },
+  { x: -6610, z: -1700, red: true }, { x: -7580, z: -1720, red: false },
   { x: 710, z: 510, red: true }, { x: 610, z: 320, red: false },
   { x: 100, z: 840, red: true }, { x: 15, z: 600, red: false },
   { x: -690, z: 1190, red: true }, { x: -750, z: 920, red: false },
@@ -32,14 +37,17 @@ export const ROCKS = [
 export const VIEWS = {
   malo: { label: 'Saint-Malo', position: [670, 55, 470], target: [990, 25, -140] },
   dinard: { label: 'Dinard', position: [-650, 65, 1280], target: [-1250, 35, 970] },
+  cezembre: { label: 'Cézembre', position: [-1850, 100, -3550], target: [-2000, 24, -4350] },
+  frehel: { label: 'Cap Fréhel', position: [-11100, 125, -5100], target: [-11650, 80, -4400] },
+  latte: { label: 'Fort La Latte', position: [-9850, 80, -3500], target: [-10300, 50, -3060] },
   bay: { label: 'Toute la baie', position: [-300, 1950, 3400], target: [0, 0, 0] },
   islands: { label: 'Les forts', position: [-500, 100, -1750], target: [490, 18, -650] },
 } as const;
 export type ViewId = keyof typeof VIEWS;
 export const EXTENSIONS = [
-  { id: 'cezembre', direction: 'nord-ouest', status: 'reserved' },
+  { id: 'cezembre', direction: 'nord-ouest', status: 'available' },
   { id: 'cancale', direction: 'nord-est', status: 'reserved' },
-  { id: 'cap-frehel', direction: 'ouest', status: 'reserved' },
+  { id: 'cap-frehel', direction: 'ouest', status: 'available' },
 ] as const;
 export function inside(x: number, z: number, polygon: readonly Point[]): boolean {
   let hit = false;

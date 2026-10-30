@@ -3,6 +3,7 @@ import type { VesselDynamics } from '../physics/VesselDynamics';
 import type { CameraMode } from '../world/VesselCamera';
 import { instruments } from '../weather/Marine';
 import { DOCKS } from '../world/geography';
+import { COAST_DESTINATIONS } from '../world/EmeraldCoast';
 import { icon } from './icons';
 
 const engineControl = (key: 'port' | 'starboard', name: string) => `
@@ -135,7 +136,7 @@ export class HelmControls {
     set('ship-speed-value',reading.speed.toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1}));
     set('ship-heading',`${String(reading.heading%360).padStart(3,'0')}°`);
     this.panel.querySelector('#compass-marks')!.setAttribute('transform',`translate(${150-(reading.heading+180)*2} 0)`);
-    const nearest=DOCKS.map(d=>({name:d.id==='malo'?'Cale de Dinan':'Clair de Lune',distance:Math.hypot(s.x-d.point[0],s.z-d.point[1])})).sort((a,b)=>a.distance-b.distance)[0];
+    const nearest=[...DOCKS.map(d=>({name:d.name,x:d.point[0],z:d.point[1]})),...COAST_DESTINATIONS.filter(d=>d.kind==='view')].map(d=>({name:d.name,distance:Math.hypot(s.x-d.x,s.z-d.z)})).sort((a,b)=>a.distance-b.distance)[0];
     set('berth-distance',`${nearest.name} · ${Math.round(nearest.distance)} m`);
     for(const mode of ['external','cockpit'] as const)this.panel.querySelector(`#camera-${mode}`)!.setAttribute('aria-pressed',String(this.mode()===mode));
     const exploring=this.mode()==='explore';
