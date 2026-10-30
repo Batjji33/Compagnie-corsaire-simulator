@@ -134,8 +134,14 @@ export class Immersion {
     clearTimeout(this.saveTimer);this.saveTimer=setTimeout(()=>{void this.store.save();},250);
   }
   setPaused(paused:boolean):void {clearTimeout(this.hornClickTimer);this.audio.setPaused(paused);this.hornButton.disabled=paused;this.hornButton.setAttribute('aria-pressed','false');}
-  reset(visited:string[]=[]):void {this.audio.stopSpeech();this.pendingNarration=undefined;this.announcementSeconds=0;this.guide.reset();this.guide.visited=new Set(visited.filter(id=>this.guide.comments.some(c=>c.id===id)));this.caption.textContent='';this.notice.hidden=true;this.notice.open=false;}
+  reset(visited:string[]=[]):void {this.audio.stopSpeech();this.pendingNarration=undefined;this.announcementSeconds=0;this.guide.reset();this.guide.visited=new Set(visited);this.caption.textContent='';this.notice.hidden=true;this.notice.open=false;}
   announce(text:string):void {if(!this.guide.muted)this.announcementSeconds=this.audio.speak(text)?Math.min(20,Math.max(3,text.length/12+1)):0;}
+  offerComment(comment:TourComment):void {
+    if(!this.guide.offer(comment))return;
+    this.audio.stopSpeech();this.pendingNarration=undefined;
+    this.showComment(comment);
+    if(!this.guide.manual){if(this.announcementSeconds>0)this.pendingNarration=comment.text;else this.audio.speak(comment.text);}
+  }
   update(dt:number):void {
     this.audio.updateTrafficHorn(this.world.traffic.taxis.horn,this.world.vessel.dynamics.state,this.world.vessel.marine.sound);
     this.announcementSeconds=Math.max(0,this.announcementSeconds-dt);

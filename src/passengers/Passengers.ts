@@ -5,7 +5,7 @@ export class Passengers {
   count=0;total=180;satisfaction=100;discomfort=0;phase:MissionPhase|'free'='preparation';progress=0;
   private previousSpeed:number|undefined;
   waiting:Record<'malo'|'dinard',number>|undefined;
-  transferPort:'malo'|'dinard'|undefined;
+  transferPort:string|undefined;
   reset(snapshot?:PassengerSnapshot):void {
     this.count=0;this.satisfaction=clamp(snapshot?.satisfaction??100,0,100);this.discomfort=Math.max(0,snapshot?.discomfort??0);this.previousSpeed=undefined;this.waiting=undefined;this.transferPort=undefined;
   }

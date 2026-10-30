@@ -51,7 +51,7 @@ export class PassengerView {
     this.gangway.visible=moving&&Math.hypot(s.x-dock.point[0],s.z-dock.point[1])<80;this.gangway.position.copy(this.entry).add(this.landing).multiplyScalar(.5);this.gangway.scale.set(1.15,1,this.direction.length());this.gangway.quaternion.setFromUnitVectors(this.axis,this.direction.normalize());
     let index=0;
     for(const port of DOCKS){
-      const queued=p.waiting?p.waiting[port.id as 'malo'|'dinard']+(port===dock&&p.phase==='unloading'?p.total-p.count:0):port===dock?count*5:0;
+      const queued=p.waiting?(p.waiting[port.id as 'malo'|'dinard']??0)+(port===dock&&p.phase==='unloading'?p.total-p.count:0):port===dock?count*5:0;
       const visible=Math.min(MAX_PEOPLE,Math.ceil(queued/5));
       for(let i=0;i<visible;i++){
       // Two waiting crowds share the same two draw calls. Only the active port has a stream.

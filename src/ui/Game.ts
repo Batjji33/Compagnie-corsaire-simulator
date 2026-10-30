@@ -1,4 +1,5 @@
 import { COAST_DESTINATIONS } from '../world/EmeraldCoast';
+import { ROUTE } from '../world/geography';
 import type { World } from '../world/World';
 import type { HelmControls } from './HelmControls';
 import type { Interface } from './Interface';
@@ -120,18 +121,22 @@ export class Game {
     if(screen==='excursions')return title('Excursion et ambiance')+'<p>Choisissez les commentaires, préparez votre excursion et réglez les volumes. La navigation est en pause pendant la préparation.</p>';
     if(screen==='settings')return title('Paramètres')+'<p>Les réglages sont sauvegardés sur cet appareil. Pendant une mission, les conditions du briefing restent fixes.</p>';
     if(screen==='free')return title('Navigation libre')+`<p>Explorez Saint-Malo, Dinard, Cézembre, Fort La Latte et le Cap Fréhel. Les caps sont des points d’observation en mer.</p>${this.weatherChoices()}<label for="free-start">Point de départ<select id="free-start">${COAST_DESTINATIONS.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')}</select></label><button class="game-primary" data-action="start-free">Prendre la barre</button>`;
-    if(screen==='missions')return title('Missions')+`<p>Choisissez votre ligne et prenez la barre.</p>${MISSIONS.map(m=>`<article class="mission-choice"><h3>${m.id===MALO_DINARD.id?'Saint-Malo ↔ Dinard':escape(m.title)}</h3><p>${m.id===MALO_DINARD.id?'Service continu : allers-retours illimités, passagers renouvelés à chaque escale.':escape(m.description)}</p><p>5–6 min par traversée · ${m.cruiseKnots} nd conseillés</p><button data-action="start-mission" data-mission="${m.id}">${m.id===MALO_DINARD.id?'Préparer le service':'Préparer la traversée'}</button></article>`).join('')}`;
-    if(screen==='briefing')return title(escape(d.title))+`<p>${escape(d.description)}</p><div class="briefing-layout">${this.routeMarkup(d)}<div><h3>Feuille de traversée</h3><dl class="game-facts"><div><dt>Départ</dt><dd>${hourLabel(d.departureHour)} · ${escape(d.origin.name)}</dd></div><div><dt>Arrivée cible</dt><dd>${hourLabel(d.departureHour+d.targetSeconds/3600)} · ${escape(d.destination.name)}</dd></div><div><dt>Conditions</dt><dd>${SEA_LABELS[d.sea]} · vent ${SEA[d.sea][0]} nd de ${d.windDirection}° · vagues ${SEA[d.sea][1].toLocaleString('fr-FR')} m</dd></div><div><dt>Durée de jeu</dt><dd>Cible ${clock(d.targetSeconds)} · temps physique normal</dd></div></dl></div></div><p>Amarres en place. Chargez les ${d.passengers} passagers, puis larguez les amarres. À l’arrivée, rejoignez la zone ocre de ${dockingRules(d).distance} m de rayon à moins de ${dockingRules(d).speedKnots.toLocaleString('fr-FR')} nd, puis appuyez sur « Amarrer et débarquer ». Aucun cap ni délai de stabilité n’est imposé. Les boudins protègent les appuis latéraux au quai ; les chocs par l’avant ou l’arrière restent des contacts.</p><p>La note dépend de la ponctualité, de la sécurité, du confort et des manœuvres. Les reprises au point sûr restent possibles avec une pénalité de manœuvre.</p><button class="game-primary" data-action="board">Embarquer les passagers</button>`;
+    if(screen==='missions')return title('Missions')+`<p>Choisissez votre ligne et prenez la barre.</p>${MISSIONS.map(m=>`<article class="mission-choice"><h3>${m.id===MALO_DINARD.id?'Saint-Malo ↔ Dinard':escape(m.title)}</h3><p>${m.id===MALO_DINARD.id?'Service continu : allers-retours illimités, passagers renouvelés à chaque escale.':escape(m.description)}</p><p>${m.id===MALO_DINARD.id?'5–6 min par traversée':`Environ ${Math.round(m.targetSeconds/60)} min de jeu`} · ${m.cruiseKnots} nd conseillés${m.excursion?` · ${m.route.length} étapes`: ""}</p>${m.excursion?.adaptation?`<p>${escape(m.excursion.adaptation)}</p>`:''}<button data-action="start-mission" data-mission="${m.id}">${m.id===MALO_DINARD.id?'Préparer le service':'Préparer l’excursion'}</button></article>`).join('')}`;
+    if(screen==='briefing')return title(escape(d.title))+`<p>${escape(d.description)}</p><div class="briefing-layout">${this.routeMarkup(d)}<div><h3>Feuille de traversée</h3><dl class="game-facts"><div><dt>Départ</dt><dd>${hourLabel(d.departureHour)} · ${escape(d.origin.name)}</dd></div><div><dt>Arrivée cible</dt><dd>${hourLabel(d.departureHour+d.targetSeconds/3600)} · ${escape(d.destination.name)}</dd></div><div><dt>Conditions</dt><dd>${SEA_LABELS[d.sea]} · vent ${SEA[d.sea][0]} nd de ${d.windDirection}° · vagues ${SEA[d.sea][1].toLocaleString('fr-FR')} m</dd></div><div><dt>Durée de jeu</dt><dd>Cible ${clock(d.targetSeconds)} · temps physique normal</dd></div></dl></div></div>${this.itineraryMarkup(d)}<p>Amarres en place. Chargez les ${d.passengers} passagers, puis larguez les amarres. À l’arrivée, rejoignez la zone ocre de ${dockingRules(d).distance} m de rayon à moins de ${dockingRules(d).speedKnots.toLocaleString('fr-FR')} nd, puis appuyez sur « Amarrer et débarquer ». Aucun cap ni délai de stabilité n’est imposé. Les boudins protègent les appuis latéraux au quai ; les chocs par l’avant ou l’arrière restent des contacts.</p><p>La note dépend de la ponctualité, de la sécurité, du confort et des manœuvres. Les reprises au point sûr restent possibles avec une pénalité de manœuvre.</p><button class="game-primary" data-action="board">Embarquer les passagers</button>`;
     if(screen==='result'&&this.mission?.result){const r=this.mission.result;return title(r.completed?'Bienvenue à '+escape(d.destination.name.split(' · ')[0]):'Mission interrompue')+`<p>${escape(r.reason)}</p><div class="mission-score"><strong>${r.score}<small> / 100</small></strong><span>${escape(r.grade)}</span></div><dl class="score-breakdown">${[['Ponctualité',r.punctuality],['Sécurité',r.safety],['Confort',r.comfort],['Manœuvres',r.manoeuvres]].map(([label,value])=>`<div><dt>${label}</dt><dd>${value} / 100</dd></div>`).join('')}</dl><p>${r.passengers} passagers arrivés · ${clock(r.elapsed)} · ${r.metrics.contacts} contacts · ${r.metrics.recoveries} reprises</p><div class="game-buttons"><button data-action="restart">Recommencer</button>${!r.completed?'<button data-action="checkpoint">Reprendre au point sûr</button>':''}<button data-action="progress">Voir la progression</button></div>`;}
     if(screen==='progress'){
       const s=this.store.data.stats;return title('Progression locale')+`<dl class="score-breakdown">${[['Traversées réussies',s.completed],['Tentatives interrompues',s.failed],['Passagers transportés',s.passengers],['Meilleure note',`${s.best} / 100`],['Temps en mission',clock(s.seconds)],['Temps en navigation libre',clock(s.freeSeconds)],['Distance en mode libre',`${(s.freeDistance/1852).toFixed(2)} milles`]].map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl><h3>Dernières traversées</h3>${this.store.data.history.length?`<ul class="game-history">${this.store.data.history.slice(0,8).map(r=>`<li><span>${escape(typeof r.routeTitle==='string'?r.routeTitle:MISSIONS.find(m=>m.id===r.missionId)?.title??r.missionId)}<br><small>${escape(r.grade)} · ${clock(r.elapsed)}</small></span><strong>${r.score} / 100</strong></li>`).join('')}</ul>`:'<p>Aucune traversée terminée. Votre première mission vous attend.</p>'}<p>Sauvegarde IndexedDB sur ce navigateur, sans compte.</p>`;
     }
     const canResume=(this.started&&!this.mission?.finished)||this.store.data.active;
-    return title(this.started?'Traversée en pause':'À vous la barre')+`<p>La baie de Saint-Malo et Dinard à bord du Corsaire d’Émeraude.</p><nav class="game-main-nav" aria-label="Modes de jeu">${canResume?'<button class="game-primary" data-action="resume">Reprendre la partie</button>':''}${this.started&&this.mode==='free'&&this.store.data.active?'<button data-action="resume-saved">Reprendre la mission sauvegardée</button>':''}<button data-action="free">Navigation libre <span>Choisir la météo et explorer la baie</span></button><button data-action="missions">Missions <span>Saint-Malo → Dinard · 180 passagers</span></button><button data-action="settings">Paramètres</button><button data-action="progress">Progression et statistiques locales</button><button data-action="excursions">Excursion et son</button></nav>${this.started&&this.mode==='mission'&&!this.mission?.finished?'<div class="game-buttons"><button data-action="restart">Redémarrer la mission</button><button data-action="checkpoint">Reprendre au point sûr</button></div>':''}<p class="game-storage" role="status"></p><small>Données maritimes fictives · ne pas utiliser pour la navigation réelle.</small>`;
+    return title(this.started?'Traversée en pause':'À vous la barre')+`<p>La baie de Saint-Malo et Dinard à bord du Corsaire d’Émeraude.</p><nav class="game-main-nav" aria-label="Modes de jeu">${canResume?'<button class="game-primary" data-action="resume">Reprendre la partie</button>':''}${this.started&&this.mode==='free'&&this.store.data.active?'<button data-action="resume-saved">Reprendre la mission sauvegardée</button>':''}<button data-action="free">Navigation libre <span>Choisir la météo et explorer la baie</span></button><button data-action="missions">Missions et excursions <span>Saint-Malo ↔ Dinard · Cézembre · Fort La Latte · Cap Fréhel</span></button><button data-action="settings">Paramètres</button><button data-action="progress">Progression et statistiques locales</button><button data-action="excursions">Excursion et son</button></nav>${this.started&&this.mode==='mission'&&!this.mission?.finished?'<div class="game-buttons"><button data-action="restart">Redémarrer la mission</button><button data-action="checkpoint">Reprendre au point sûr</button></div>':''}<p class="game-storage" role="status"></p><small>Données maritimes fictives · ne pas utiliser pour la navigation réelle.</small>`;
   }
   private weatherChoices():string {
     const m=this.store.data.marine;
     return `<div class="free-choices"><label for="free-sea">État de mer<select id="free-sea">${Object.keys(SEA).map(k=>`<option value="${k}" ${k===m.sea?'selected':''}>${SEA_LABELS[k as keyof typeof SEA]}</option>`).join('')}</select></label><label for="free-hour">Heure<input id="free-hour" type="number" min="0" max="23" value="${Math.floor(m.hour)}"></label><label for="free-wind">Vent venant de (°)<input id="free-wind" type="number" min="0" max="359" value="${Math.round(m.targetDirection)}"></label><label class="check"><input id="free-damage" type="checkbox" ${m.damageEnabled?'checked':''}>Dégâts activés</label></div><p>Les réglages détaillés restent accessibles pendant la navigation.</p>`;
+  }
+  private itineraryMarkup(d:MissionDefinition):string {
+    if(!d.excursion)return '';
+    return `<p>${escape(d.excursion.reference)}. <a href="${d.excursion.source}" target="_blank" rel="noopener">Voir le circuit de la compagnie</a>.</p>${d.excursion.adaptation?`<p>${escape(d.excursion.adaptation)}</p>`:''}<p>Distances et durées adaptées au jeu. Validez chaque point de passage dans l’ordre. Le cercle vert indique la prochaine étape ; aux panoramas, restez à moins de 5 nd pendant le temps indiqué.</p><ol class="excursion-itinerary">${d.route.map(p=>`<li>${escape(p.label)}${p.dwellSeconds?` · panorama ${p.dwellSeconds} s à moins de ${p.maxKnots} nd`:''}</li>`).join('')}</ol>`;
   }
   private serviceMarkup(screen:string):string|undefined {
     const service=this.service;if(!service)return;
@@ -167,14 +172,22 @@ export class Game {
   }
   private setMissionRoute():void {
     const d=this.mission?.definition;this.markers.setMission(d??null);
-    if(d)document.querySelector('#bay-map .map-route')?.setAttribute('points',[d.origin.berth,...d.route,d.destination.berth].map(p=>`${p.x},${p.z}`).join(' '));
+    const line=document.querySelector('#bay-chart .map-route');
+    if(line)line.setAttribute('points',d?[d.origin.berth,...d.route,d.destination.berth].map(p=>`${p.x},${p.z}`).join(' '):ROUTE.map(p=>p.join(',')).join(' '));
+    document.querySelectorAll('#bay-chart .map-route').forEach((el,i)=>{el.classList.toggle('map-route-muted',!!d&&i>0);});
   }
   private routeMarkup(d:MissionDefinition):string {
     // Reuse the existing map's authored coast, route, hazards and ports, removing live IDs.
-    const svg=document.querySelector('#bay-map svg')!.cloneNode(true) as SVGElement;
+    const svg=document.querySelector('#bay-chart')!.cloneNode(true) as SVGElement;
+    svg.removeAttribute('id');
+    svg.querySelectorAll('.map-route').forEach((el,i)=>{if(i>0)el.remove();});
     svg.querySelector('.map-route')?.setAttribute('points',[d.origin.berth,...d.route,d.destination.berth].map(p=>`${p.x},${p.z}`).join(' '));
-    svg.querySelector('#map-camera')?.remove();svg.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
-    return `<figure class="briefing-map">${svg.outerHTML}<figcaption>${escape(d.origin.name)} → ${escape(d.destination.name)}<br>Trajet suggéré · données fictives</figcaption></figure>`;
+    const points=[d.origin.berth,...d.route,d.destination.berth],xs=points.map(p=>p.x),zs=points.map(p=>p.z);
+    const minX=Math.min(...xs)-650,minZ=Math.min(...zs)-650;
+    svg.setAttribute('viewBox',`${minX} ${minZ} ${Math.max(...xs)-minX+650} ${Math.max(...zs)-minZ+650}`);
+    svg.querySelectorAll('text').forEach(el=>el.remove());
+    svg.querySelectorAll('#map-camera,#map-vessel,#map-taxis').forEach(el=>el.remove());svg.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
+    return `<figure class="briefing-map">${svg.outerHTML}<figcaption>${escape(d.origin.name)} → ${escape(d.destination.name)}<br>${d.excursion?'Étapes obligatoires dans l’ordre':'Trajet suggéré'} · données fictives</figcaption></figure>`;
   }
   private prepare(definition:MissionDefinition):void {
     if(this.service&&!this.service.result&&this.started){this.show('end-service');return;}
@@ -201,7 +214,7 @@ export class Game {
     this.mode='free';this.service=undefined;this.mission=undefined;this.world.traffic.reset();this.world.vessel.moored=false;this.world.vessel.dynamics.reset(start);this.world.vessel.marine.damage=0;
     this.world.passengers.reset();this.immersion.reset();this.immersion.guide.destination=undefined;
     document.querySelector('#app')!.classList.remove('mission-active');this.lockMissionSettings();
-    this.applyMarine(this.store.data.marine);this.resetView();this.markers.setMission(null);this.launch();
+    this.applyMarine(this.store.data.marine);this.resetView();this.setMissionRoute();this.launch();
   }
   private launch():void {
     this.syncMissionClock();
@@ -223,7 +236,12 @@ export class Game {
   private recover():void {
     if(!this.mission||this.mission.phase==='preparation'){this.show('home');return;}
     if(this.service){if(!this.service.recover()){this.launch();return;}}else this.mission.recover();const def=this.mission.definition;
-    this.world.vessel.dynamics.reset(this.mission.state.checkpoint==='approach'?def.destination.approach:def.origin.berth);
+    let pose=this.mission.state.checkpoint==='approach'?def.destination.approach:def.origin.berth;
+    if(def.excursion&&this.mission.state.checkpoint==='departure'&&this.mission.state.visited.length){
+      const index=Math.max(...this.mission.state.visited),last=def.route[index],next=def.route[index+1]??def.destination.berth;
+      pose={...last,heading:Math.atan2(next.x-last.x,last.z-next.z)};
+    }
+    this.world.vessel.dynamics.reset(pose);
     this.world.vessel.marine.damage=Math.min(.3,this.world.vessel.marine.damage);this.resetView();this.launch();
     this.world.passengers.reset(this.world.passengers.snapshot());
   }
@@ -234,7 +252,8 @@ export class Game {
       else m.release();
     }
     else if(m.phase==='docking'){
-      if(!this.world.traffic.canPlayerDock(this.arrivalPort())){this.refreshHud();return;}
+      const port=this.arrivalPort();
+      if(port&&!this.world.traffic.canPlayerDock(port)){this.refreshHud();return;}
       const docked=this.service?this.service.dock(this.telemetry(),this.world.passengers.satisfaction):m.dock(this.telemetry());
       if(docked&&this.service)this.immersion.announce(`Accostage réussi à ${this.service.destinationName}. Débarquement des passagers.`);
     }
@@ -268,7 +287,14 @@ export class Game {
     const v=this.world.vessel,s=v.dynamics.state,c=v.dynamics.command;
     return {...s,speed:Math.hypot(s.surge,s.sway),commandPort:c.port,commandStarboard:c.starboard,contact:v.contact.label,damage:v.marine.damage,clearance:v.marine.clearance};
   }
-  private arrivalPort():PortId {return this.mission?.definition.destination.name.startsWith('Dinard')?'dinard':'malo';}
+  private arrivalPort():PortId|undefined {
+    const destination=this.mission?.definition.destination;
+    if(destination?.dockId)return destination.dockId==='malo'||destination.dockId==='dinard'?destination.dockId:undefined;
+    return destination?.name.startsWith('Dinard')?'dinard':destination?.name.startsWith('Saint-Malo')?'malo':undefined;
+  }
+  private berthAvailable():boolean {
+    const port=this.arrivalPort();return !port||!this.world.traffic.enabled||this.world.traffic.taxis.berths.availableToPlayer(port);
+  }
   update(dt:number):void {
     if(this.paused)return;
     const v=this.world.vessel;
@@ -284,6 +310,17 @@ export class Game {
         this.syncServiceMission(arrived);
         if(previous===this.mission&&phase==='boarding'&&this.mission.phase==='departure')this.immersion.announce(`Embarquement terminé. Départ autorisé pour ${this.service.destinationName}.`);
       }else this.mission.update(dt,this.telemetry());
+      if(this.mission.definition.excursion){
+        const next=this.mission.waypoint;
+        if(next?.comment&&Math.hypot(v.dynamics.state.x-next.x,v.dynamics.state.z-next.z)<(next.radius??130)){
+          this.immersion.offerComment({id:`${this.mission.definition.id}-${this.mission.waypointIndex}`,x:next.x,z:next.z,radius:next.radius??130,...next.comment});
+        }
+        for(const index of this.mission.state.visited){
+          const comment=this.mission.definition.route[index]?.comment;
+          const point=this.mission.definition.route[index];
+          if(comment)this.immersion.offerComment({id:`${this.mission.definition.id}-${index}`,x:point.x,z:point.z,radius:point.radius??130,...comment});
+        }
+      }
       this.syncMissionClock();
       this.updatePassengers(dt);
       if(this.mission.finished){
@@ -322,12 +359,13 @@ export class Game {
         p.waiting[this.service.destinationPort]=transfer.phase==='unloading'?servicePassengers(this.service.state.completed+1):Math.max(0,transfer.total-p.count);
       }
       p.transferPort=m.phase==='unloading'?this.service.destinationPort:this.service.originPort;
-    }else{p.waiting=undefined;p.transferPort=undefined;}
+    }else{p.waiting=undefined;p.transferPort=m?(m.phase==='unloading'||m.finished?m.definition.destination.dockId:m.definition.origin.dockId):undefined;}
   }
-  private target():{x:number;z:number;label:string}|undefined {
+  private target():{x:number;z:number;label:string;radius?:number}|undefined {
     const m=this.mission;if(!m)return;
     if(m.phase==='crossing'||m.phase==='departure'){
       const s=this.world.vessel.dynamics.state,d=m.definition;
+      if(d.excursion)return m.waypoint??{...d.destination.berth,label:d.destination.name};
       const arrivalDistance=Math.hypot(s.x-d.destination.berth.x,s.z-d.destination.berth.z);
       return d.route.find((p,i)=>!m.state.visited.includes(i)&&Math.hypot(p.x-d.destination.berth.x,p.z-d.destination.berth.z)<arrivalDistance-40)??{...d.destination.berth,label:d.destination.name};
     }
@@ -354,6 +392,11 @@ export class Game {
     const t=this.telemetry(),target=this.target();this.markers.update(this.world.vessel.marine.tide,target);
     this.hud.querySelector<HTMLButtonElement>('#mission-skip')!.hidden=!this.service?.canSkipWait||!dockingStatus(m.definition,t).valid;
     let guidance=target?`${target.label} · ${Math.round(Math.hypot(t.x-target.x,t.z-target.z))} m · cap conseillé ${Math.round(degrees(Math.atan2(target.x-t.x,-(target.z-t.z))))%360}°`:'';
+    if(m.definition.excursion&&m.phase==='crossing') {
+      const p=m.waypoint;
+      guidance=`Étape ${Math.min(m.definition.route.length,m.state.visited.length+1)} / ${m.definition.route.length} · ${guidance}`;
+      if(p?.dwellSeconds)guidance+=` · Panorama : ${Math.min(p.dwellSeconds,Math.floor(m.state.hold))} / ${p.dwellSeconds} s à moins de ${p.maxKnots} nd dans le cercle`;
+    }
     if(m.phase==='boarding')guidance=`Embarquement · ${this.world.passengers.count} / ${m.definition.passengers} à bord`;
     if(m.phase==='unloading')guidance=`Accostage réussi · Débarquement ${Math.min(m.definition.passengers,Math.floor(m.definition.passengers*m.state.phaseTime/m.definition.unloadingSeconds))} / ${m.definition.passengers}`;
     if(this.service?.transfer&&this.service.transfer.phase!=='unloading')guidance=this.service.transfer.phase==='boarding'?`En escale · Embarquement ${this.world.passengers.count} / ${this.service.transfer.total}`:`En escale · départ autorisé dans ${clock(Math.ceil(this.service.waitRemaining))}`;
@@ -362,16 +405,17 @@ export class Game {
       const d=dockingStatus(m.definition,t),limit=dockingRules(m.definition);
       const status=d.valid?'Prêt à amarrer':d.distance>limit.distance?'Rejoignez la zone ocre':d.speedKnots>=limit.speedKnots?'Réduisez la vitesse':t.contact?'Écartez le navire de l’obstacle':'Vérifiez le dégagement sous la quille';
       guidance=`Zone : ${d.distance.toFixed(0)} / ${limit.distance} m · ${d.speedKnots.toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1})} nd (moins de ${limit.speedKnots.toLocaleString('fr-FR')}) · ${status}`;
-      if(this.world.traffic.enabled&&!this.world.traffic.taxis.berths.availableToPlayer(this.arrivalPort()))guidance='Quai occupé — veuillez patienter';
+      if(!this.berthAvailable())guidance='Quai occupé — veuillez patienter';
     }
     if(this.service&&!m.moored&&this.service.delay>1e-6)guidance+=` · Retard +${clock(this.service.delay)}`;
     set('objective-guidance',guidance);
     const button=this.hud.querySelector<HTMLButtonElement>('#mission-action')!;
     button.hidden=!(m.phase==='departure'&&!m.state.released||m.phase==='docking');
     button.textContent=m.phase==='departure'?'Larguer les amarres':'Amarrer et débarquer';
-    button.disabled=m.phase==='docking'?!dockingStatus(m.definition,t).valid||this.world.traffic.enabled&&!this.world.traffic.taxis.berths.availableToPlayer(this.arrivalPort()):m.phase==='departure'&&!m.departureAllowed;
+    button.disabled=m.phase==='docking'?!dockingStatus(m.definition,t).valid||!this.berthAvailable():m.phase==='departure'&&!m.departureAllowed;
     const stages:MissionPhase[]=['boarding','departure','crossing','approach','docking','unloading'];
     this.hud.querySelector('#objective-steps')!.innerHTML=stages.map((p,i)=>`<li ${p===m.phase?'aria-current="step"':''}>${i<stages.indexOf(m.phase)?'✓ ':''}${names[p]}</li>`).join('');
+    if(m.definition.excursion) this.hud.querySelector('#objective-steps')!.innerHTML+=m.definition.route.map((p,i)=>`<li ${i===m.waypointIndex?'aria-current="step"':''}>${m.state.visited.includes(i)?'✓ ':''}${escape(p.label)}${p.dwellSeconds?` · ${p.dwellSeconds} s, moins de ${p.maxKnots} nd`:''}</li>`).join('');
     document.querySelector('#app')!.classList.toggle('mission-active',this.mode==='mission'&&!m.finished);
   }
   private lockMissionSettings():void {

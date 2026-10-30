@@ -171,6 +171,10 @@ kbd { font: inherit; color: var(--muted); margin-left: auto; }
 #bay-map polygon, .briefing-map polygon { fill: #8d947c; stroke: #c4bea3; stroke-width: 14; }
 #bay-map text, .briefing-map text { fill: #fff; font-size: 250px; }
 #bay-map .map-route, .briefing-map .map-route { fill: none; stroke: #e8dab9; stroke-width: 25; stroke-dasharray: 80 65; }
+#bay-map .map-route-muted { opacity: .12; }
+.excursion-itinerary { columns: 2 220px; padding-left: 22px; line-height: 1.6; }
+.excursion-itinerary li { break-inside: avoid; }
+#game-menu a { color: var(--accent); }
 .map-buoy.port { fill: #f28772; } .map-buoy.starboard { fill: #76d2ad; }
 .map-dock { fill: #edc076; } #map-camera { fill: white; stroke: #253038; stroke-width: 30; }
 #bay-map .map-shoal, .briefing-map .map-shoal { fill: none; stroke: #edc076; stroke-width: 15; stroke-dasharray: 40 30; }

@@ -4,6 +4,47 @@
 horaires, durées, météo, seuils de sécurité, critères d'accostage et commentaires.
 Ajouter une définition dans `MISSIONS` la rend disponible dans le catalogue du menu.
 
+## Excursions de la Côte d’Émeraude
+
+`excursions.ts` définit trois missions finies : Saint-Malo → Cézembre, Fort La Latte
+et Cap Fréhel & Fort La Latte. Les références sont les pages officielles de la
+[traversée vers Cézembre](https://compagniecorsaire.com/destination/ile-cezembre/),
+du [circuit côtier](https://compagniecorsaire.com/destination/croisiere-cap-frehel-fort-la-latte/)
+et des [embarcadères malouins](https://compagniecorsaire.com/ports-de-depart/acces-saint-malo-croisiere-bateau/),
+consultées le 30 octobre 2026.
+
+Cézembre part de la cale de Dinan et se termine par le débarquement sur l’île.
+Les deux croisières partent de la Bourse et y reviennent. Elles longent Saint-Énogat,
+Saint-Lunaire, Saint-Briac, Lancieux/Ébihens et Saint-Cast, puis Fort La Latte ;
+la croisière complète continue vers Fréhel et revient par le large. La mission
+Fort La Latte est explicitement une variante courte de jeu du circuit commercial
+combiné, avec demi-tour au fort. Ni le fort ni le cap ne deviennent un quai.
+
+`MissionDefinition.excursion` active la validation ordonnée des `Waypoint`.
+`radius` définit la zone ; `dwellSeconds` et `maxKnots` imposent les panoramas
+(15 s au fort, 20 s au cap, strictement moins de 5 nd). Sortir du cercle ou
+dépasser la vitesse remet le temps d’observation à zéro. Une croisière en boucle
+ne passe en approche qu’après toutes ses étapes, même si le navire est près du
+quai de départ. La ligne historique conserve ses points facultatifs.
+
+Les commentaires sont originaux, localisés aux étapes et proposés à l’arrivée
+dans leur zone, avec lecture selon les réglages existants. La nouvelle étape
+remplace un ancien commentaire resté ouvert. Les identifiants déjà proposés
+sont sauvegardés pour éviter leur répétition après reprise. La voix de synthèse
+reste soumise aux capacités du navigateur et aux préférences audio de l’utilisateur.
+
+`dockId` rattache chaque transfert de passagers à son quai ; la Bourse et Cézembre
+ne réservent pas la cale des bateaux-taxis. La reprise au point sûr conserve
+les étapes validées et replace le navire au dernier repère atteint. Les états
+existants restent compatibles : aucun nouveau champ de sauvegarde n’est requis.
+
+Les distances, effectifs (120/180) et durées sont des paramètres de jeu, sans
+calendrier ni horaire commercial garanti. Tests : parcours échantillonnés tous
+les 5 m avec contrôle de la coque et de la profondeur simulée à basse mer,
+embarquement, visite complète, observation, sauvegarde/reprise, retour au quai,
+débarquement et enregistrement du résultat. Contrôle UI local : parcours
+scénarisés à pas fixe, captures dans `.qa/excursions/` (non versionnées).
+
 Les règles d'amarrage communes sont dans `docking.ts` : rayon de 30 m, vitesse
 strictement inférieure à 2 nd, validation immédiate sans contrainte de cap, de neutre
 ou de stabilité. Omettre `docking` dans une nouvelle définition pour hériter de ces

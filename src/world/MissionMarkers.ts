@@ -19,9 +19,9 @@ export class MissionMarkers {
     // Pole stands beside the berth so the boat can occupy the ring without intersecting it.
     this.pole.position.set(def.destination.berth.x-dockingRules(def).distance-2,11,def.destination.berth.z);
   }
-  update(tide:number,target:{x:number;z:number}|undefined):void {
+  update(tide:number,target:{x:number;z:number;radius?:number}|undefined):void {
     this.root.position.y=tide;this.suggestion.visible=!!target;
-    if(target)this.suggestion.position.set(target.x,.7,target.z);
+    if(target){this.suggestion.position.set(target.x,.7,target.z);this.suggestion.scale.setScalar((target.radius??36)/this.ringGeometry.parameters.outerRadius);}
   }
   dispose():void {this.root.removeFromParent();this.ringGeometry.dispose();this.poleGeometry.dispose();this.material.dispose();(this.suggestion.material as MeshBasicMaterial).dispose();}
 }

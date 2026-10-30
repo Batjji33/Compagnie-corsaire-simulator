@@ -20,6 +20,7 @@ export const DOCKS = [
   { id: 'malo', name: 'Saint-Malo · Cale de Dinan', point: [920, 245] as Point, land: [920, 145] as Point, heading: Math.PI, provenance: 'Lieu réel ; cale et dimensions interprétées' },
   { id: 'dinard', name: 'Dinard · Clair de Lune', point: [-970, 1120] as Point, land: [-1165, 1120] as Point, heading: Math.PI / 2, provenance: 'Lieu réel ; ponton et dimensions interprétés' },
   { id: 'cezembre', name: 'Cézembre · débarcadère', point: [-2050,-3800] as Point, land: [-2200,-4020] as Point, heading: Math.PI / 2, provenance: 'Débarcadère interprété pour le jeu' },
+  { id: 'bourse', name: 'Saint-Malo · Gare maritime de la Bourse', point: [1250,400] as Point, land: [1290,40] as Point, heading: Math.PI / 2, provenance: 'Embarcadère réel ; implantation et dimensions adaptées à la carte de jeu' },
 ] as const;
 export const ROUTE: readonly Point[] = [[920,285],[720,440],[300,650],[-200,850],[-650,1030],[-925,1120]];
 export const BUOYS = [

@@ -103,6 +103,7 @@ export class BayEnvironment {
     this.wall(base,[1100,1100],[990,850],-3,9,25);
     base.add('cylinder','white',180,15,-160,10,24,10); base.add('cylinder','dark',180,28,-160,12,4,12);
     this.dock(base,detail,0);
+    this.dock(base,detail,3);
     this.zone('Saint-Malo · remparts et port',base,detail,1050,-150);
   }
   private buildDinard() {

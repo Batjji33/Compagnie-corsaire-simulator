@@ -1,6 +1,7 @@
 import { clamp, KNOT } from '../ships/parameters.ts';
 import type { MissionDefinition, MissionPhase } from './definitions.ts';
 import { dockingRules } from './docking.ts';
+import { BAY } from '../world/geography.ts';
 
 export interface Telemetry {
   x:number;z:number;heading:number;speed:number;yawRate:number;port:number;starboard:number;
@@ -48,6 +49,8 @@ export class Mission {
   }
   get phase():MissionPhase{return this.state.phase;}
   get finished():boolean{return this.phase==='complete'||this.phase==='failed';}
+  get waypointIndex():number {return this.definition.route.findIndex((_,i)=>!this.state.visited.includes(i));}
+  get waypoint() {return this.definition.route[this.waypointIndex];}
   get moored():boolean{return this.phase==='preparation'||this.phase==='boarding'||(this.phase==='departure'&&!this.state.released)||this.phase==='unloading'||this.finished;}
   private enter(phase:MissionPhase):void {this.state.phase=phase;this.state.phaseTime=0;this.state.hold=0;}
   board():void {if(this.phase==='preparation')this.enter('boarding');}
@@ -78,14 +81,22 @@ export class Mission {
       if(t.damage>=d.rules.maxDamage){this.fail('Coque trop endommagée pour transporter les passagers.');return;}
       if(s.groundedSeconds>d.rules.maxGroundedSeconds){this.fail('Échouement prolongé : assistance nécessaire.');return;}
       if(s.elapsed>d.maxSeconds+s.metrics.recoveries*300){this.fail('Temps maximal de mission dépassé. Reprenez au point sûr pour disposer de 5 minutes supplémentaires.');return;}
-      if(Math.abs(t.x)>5200||Math.abs(t.z)>5200){this.fail('Le navire a quitté la zone de jeu.');return;}
+      if(t.x<BAY.minX||t.x>BAY.maxX||t.z<BAY.minZ||t.z>BAY.maxZ){this.fail('Le navire a quitté la zone de jeu.');return;}
     }
     switch(this.phase){
       case 'boarding':if(s.phaseTime>=d.boardingSeconds)this.enter('departure');break;
       case 'departure':if(s.released&&Math.hypot(t.x-d.origin.berth.x,t.z-d.origin.berth.z)>=d.origin.exitDistance)this.enter('crossing');break;
       case 'crossing':
-        d.route.forEach((p,i)=>{if(!s.visited.includes(i)&&Math.hypot(t.x-p.x,t.z-p.z)<100)s.visited.push(i);});
-        if(Math.hypot(t.x-d.destination.berth.x,t.z-d.destination.berth.z)<d.destination.approachRadius){s.checkpoint='approach';this.enter('approach');}
+        if(d.excursion){
+          const index=this.waypointIndex,p=d.route[index];
+          if(p){
+            const inZone=Math.hypot(t.x-p.x,t.z-p.z)<(p.radius??130);
+            const slow=p.maxKnots===undefined||t.speed/KNOT<p.maxKnots;
+            s.hold=inZone&&slow?s.hold+dt:0;
+            if(inZone&&slow&&s.hold+1e-6>=(p.dwellSeconds??0)){s.visited.push(index);s.hold=0;}
+          }
+        }else d.route.forEach((p,i)=>{if(!s.visited.includes(i)&&Math.hypot(t.x-p.x,t.z-p.z)<100)s.visited.push(i);});
+        if((!d.excursion||this.waypointIndex===-1)&&Math.hypot(t.x-d.destination.berth.x,t.z-d.destination.berth.z)<d.destination.approachRadius){s.checkpoint='approach';this.enter('approach');}
         break;
       case 'approach':if(Math.hypot(t.x-d.destination.berth.x,t.z-d.destination.berth.z)<d.destination.dockingRadius)this.enter('docking');break;
       case 'docking':s.hold=dockingStatus(d,t).valid?s.hold+dt:0;break;

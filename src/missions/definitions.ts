@@ -2,13 +2,19 @@ import { BOAT } from '../ships/parameters.ts';
 import { ROUTE } from '../world/geography.ts';
 import type { SeaState } from '../weather/Marine.ts';
 import type { DockingRules } from './docking.ts';
+import { EXCURSIONS } from './excursions.ts';
 
 export interface Pose { x:number; z:number; heading:number }
+export interface Waypoint extends Omit<Pose,'heading'> {
+  label:string; radius?:number; dwellSeconds?:number; maxKnots?:number;
+  comment?:{title:string;text:string;source:string};
+}
 export interface MissionDefinition {
   id:string; title:string; description:string;
-  origin:{name:string; berth:Pose; exitDistance:number};
-  destination:{name:string; berth:Pose; headings:number[]; approach:Pose; approachRadius:number; dockingRadius:number};
-  route:{x:number;z:number;label:string}[];
+  origin:{name:string; berth:Pose; exitDistance:number; dockId?:string};
+  destination:{name:string; berth:Pose; headings:number[]; approach:Pose; approachRadius:number; dockingRadius:number; dockId?:string};
+  route:Waypoint[];
+  excursion?:{source:string;reference:string;adaptation?:string};
   passengers:number; boardingSeconds:number; unloadingSeconds:number;
   departureHour:number; sea:SeaState; windDirection:number;
   targetSeconds:number; maxSeconds:number; cruiseKnots:number;
@@ -37,4 +43,4 @@ export const MALO_DINARD:MissionDefinition={
     complete:'Traversée terminée. Les passagers ont rejoint Dinard.',failed:'Mission interrompue. Reprenez au dernier point sûr ou recommencez.',
   },
 };
-export const MISSIONS=[MALO_DINARD];
+export const MISSIONS=[MALO_DINARD,...EXCURSIONS];

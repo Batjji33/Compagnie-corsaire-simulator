@@ -39,6 +39,12 @@ export class TourGuide {
     if(next){this.selected=this.contextual(next);this.visited.add(next.id);this.cooldown=30;this.selectedSeconds=0;this.acknowledged=false;return this.selected;}
   }
   choose(id:string):TourComment|undefined {const c=this.comments.find(c=>c.id===id);if(c){this.selected=this.contextual(c);this.visited.add(c.id);this.acknowledged=true;this.selectedSeconds=0;return this.selected;}}
+  offer(comment:TourComment):boolean {
+    if(this.visited.has(comment.id)||this.muted||!this.automatic)return false;
+    if(!this.comments.some(c=>c.id===comment.id))this.comments.push(comment);
+    this.selected=comment;this.visited.add(comment.id);this.selectedSeconds=0;this.acknowledged=false;
+    return true;
+  }
   dismiss():void {this.selected=undefined;this.selectedSeconds=0;}
   reset():void {this.visited.clear();this.selected=undefined;this.cooldown=0;}
 }

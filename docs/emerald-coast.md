@@ -46,8 +46,11 @@ Il faut dégager vers le sud avant de repartir à l’ouest. Cap Fréhel et Fort
 La Latte sont des points d’observation en eau libre, sans faux port ni quai.
 Le choix du point de départ ne s’applique qu’au lancement d’une nouvelle
 navigation libre. Les déplacements en cours de navigation restent continus.
-Les nouveaux arrêts n’ajoutent pas de mission commerciale ni de transfert
-automatique de passagers. Les cales et missions Saint-Malo–Dinard restent actives.
+Le catalogue de missions propose désormais Cézembre avec débarquement,
+Fort La Latte avec retour à la Bourse, et Cap Fréhel & Fort La Latte avec
+retour à la Bourse, embarquement et étapes commentées. La mission Fort La Latte
+est une variante courte de jeu du circuit réel combiné. Voir `src/missions/README.md`.
+Les cales et missions Saint-Malo–Dinard restent actives.
 Les commentaires personnalisés acceptent désormais toute l’étendue du monde.
 
 ## Rendu et vérifications
