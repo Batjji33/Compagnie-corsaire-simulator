@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { Mission, dockingStatus } from '../src/missions/Mission.ts';
 import type { Telemetry } from '../src/missions/Mission.ts';
 import { MALO_DINARD } from '../src/missions/definitions.ts';
+import { DEFAULT_DOCKING_RULES, dockingRules } from '../src/missions/docking.ts';
+import { MissionMarkers } from '../src/world/MissionMarkers.ts';
+import { Mesh, RingGeometry } from 'three';
 import { KNOT } from '../src/ships/parameters.ts';
 import { ShoreContact } from '../src/physics/ShoreContact.ts';
 import { VesselDynamics } from '../src/physics/VesselDynamics.ts';
@@ -27,12 +30,33 @@ test('waypoints are suggestions; the arrival approach and docking stages still a
   const m=departed();m.state.visited=[];tick(m,1,sample({x:-750,z:1100}));assert.equal(m.phase,'approach');
   assert.equal(m.state.checkpoint,'approach');tick(m,1,sample({...MALO_DINARD.destination.berth}));assert.equal(m.phase,'docking');
 });
-test('docking rejects distance, heading, speed, live engines, turning and contact',()=>{
+test('docking rejects positions outside the enlarged zone, 2 knots or more, incidents and grounding',()=>{
   const d=MALO_DINARD,t=sample({...d.destination.berth});assert.ok(dockingStatus(d,t).valid);
-  for(const bad of [{x:-900},{heading:Math.PI/2},{speed:KNOT},{port:.3},{commandPort:.1},{yawRate:.04},{contact:'Quai'},{clearance:0}])assert.equal(dockingStatus(d,{...t,...bad}).valid,false);
-  assert.ok(dockingStatus(d,{...t,heading:Math.PI}).valid);
-  const m=atDock();assert.equal(m.dock(t),false);tick(m,3,t);assert.equal(m.dock(t),false);
-  tick(m,.1,{...t,speed:2});assert.equal(m.state.hold,0);tick(m,4.1,t);assert.ok(m.dock(t));assert.equal(m.phase,'unloading');assert.ok(m.moored);
+  for(const bad of [{x:d.destination.berth.x+30.01},{speed:2*KNOT},{speed:2.1*KNOT},{contact:'Quai'},{contact:'Rochers'},{clearance:0}])assert.equal(dockingStatus(d,{...t,...bad}).valid,false);
+  const m=atDock();assert.equal(m.dock({...t,speed:2*KNOT}),false);assert.equal(m.phase,'docking');
+});
+
+test('docking is immediate anywhere in the 30 m zone below 2 knots, without alignment or neutral requirements',()=>{
+  const d=MALO_DINARD;
+  for(const [dx,dz] of [[30,0],[-30,0],[0,30],[0,-30],[21,21]]){
+    const t=sample({...d.destination.berth,x:d.destination.berth.x+dx,z:d.destination.berth.z+dz,heading:Math.PI/2,speed:1.999*KNOT,port:.3,starboard:-.3,commandPort:.3,commandStarboard:-.3,yawRate:.04});
+    assert.ok(dockingStatus(d,t).valid);
+    const m=atDock();m.state.hold=0;assert.ok(m.dock(t));assert.equal(m.phase,'unloading');assert.ok(m.moored);
+  }
+});
+
+test('future missions inherit shared docking rules and the visible ring matches the allowed radius',()=>{
+  const future={...MALO_DINARD,id:'future-crossing',title:'Nouvelle traversée'};
+  assert.equal(dockingRules(future),DEFAULT_DOCKING_RULES);
+  const markers=new MissionMarkers();
+  try{
+    for(const def of [future,{...future,docking:{distance:45,speedKnots:2}}]){
+      markers.setMission(def);
+      const ring=markers.root.children.find((mesh)=>mesh instanceof Mesh&&mesh.geometry instanceof RingGeometry&&mesh.position.x===def.destination.berth.x) as Mesh<RingGeometry>;
+      assert.equal(ring.geometry.parameters.outerRadius*ring.scale.x,dockingRules(def).distance);
+      assert.ok(dockingStatus(def,sample({...def.destination.berth,x:def.destination.berth.x+dockingRules(def).distance,speed:1.9*KNOT})).valid);
+    }
+  }finally{markers.dispose();}
 });
 test('arrival is only completed after unloading; scores and local records are consistent',()=>{
   const m=atDock(),t=sample({...MALO_DINARD.destination.berth});tick(m,4.1,t);m.dock(t);tick(m,11,t);assert.equal(m.result,undefined);

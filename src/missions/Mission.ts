@@ -1,5 +1,6 @@
 import { clamp, KNOT } from '../ships/parameters.ts';
 import type { MissionDefinition, MissionPhase } from './definitions.ts';
+import { dockingRules } from './docking.ts';
 
 export interface Telemetry {
   x:number;z:number;heading:number;speed:number;yawRate:number;port:number;starboard:number;
@@ -17,12 +18,12 @@ export interface MissionSnapshot {
   checkpoint:'departure'|'approach';metrics:MissionMetrics;groundedSeconds:number;visited:number[];
   accountedSeconds:number;
 }
-export interface DockingStatus {distance:number;angle:number;speedKnots:number;neutral:boolean;valid:boolean}
+export interface DockingStatus {distance:number;speedKnots:number;valid:boolean}
 export function dockingStatus(def:MissionDefinition,t:Telemetry):DockingStatus {
+  const rules=dockingRules(def);
   const distance=Math.hypot(t.x-def.destination.berth.x,t.z-def.destination.berth.z);
-  const angle=Math.min(...def.destination.headings.map(h=>Math.abs(Math.atan2(Math.sin(t.heading-h),Math.cos(t.heading-h)))*180/Math.PI));
-  const neutral=Math.max(Math.abs(t.port),Math.abs(t.starboard))<.08&&Math.max(Math.abs(t.commandPort),Math.abs(t.commandStarboard))<.03;
-  return {distance,angle,speedKnots:t.speed/KNOT,neutral,valid:distance<=def.docking.distance&&angle<=def.docking.angleDegrees&&t.speed/KNOT<=def.docking.speedKnots&&neutral&&Math.abs(t.yawRate)<.015&&!t.contact&&t.clearance>.3};
+  const speedKnots=t.speed/KNOT;
+  return {distance,speedKnots,valid:distance<=rules.distance&&speedKnots<rules.speedKnots&&!t.contact&&t.clearance>.3};
 }
 export class Mission {
   readonly definition:MissionDefinition;
@@ -47,7 +48,7 @@ export class Mission {
   board():void {if(this.phase==='preparation')this.enter('boarding');}
   release():void {if(this.phase==='departure')this.state.released=true;}
   dock(t:Telemetry):boolean {
-    if(this.phase!=='docking'||this.state.hold<this.definition.docking.holdSeconds||!dockingStatus(this.definition,t).valid)return false;
+    if(this.phase!=='docking'||!dockingStatus(this.definition,t).valid)return false;
     this.enter('unloading');return true;
   }
   update(dt:number,t:Telemetry):void {

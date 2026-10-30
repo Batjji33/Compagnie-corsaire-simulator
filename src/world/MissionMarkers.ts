@@ -1,5 +1,6 @@
 import { Group, Mesh, MeshBasicMaterial, RingGeometry, CylinderGeometry } from 'three';
 import type { MissionDefinition } from '../missions/definitions';
+import { dockingRules } from '../missions/docking.ts';
 
 /** A few reusable meshes; no labels, textures or per-frame geometry allocations. */
 export class MissionMarkers {
@@ -14,8 +15,9 @@ export class MissionMarkers {
   setMission(def:MissionDefinition|null):void {
     this.root.visible=!!def;if(!def)return;
     this.berth.position.set(def.destination.berth.x,.6,def.destination.berth.z);
+    this.berth.scale.setScalar(dockingRules(def).distance/this.ringGeometry.parameters.outerRadius);
     // Pole stands beside the berth so the boat can occupy the ring without intersecting it.
-    this.pole.position.set(def.destination.berth.x-13,11,def.destination.berth.z);
+    this.pole.position.set(def.destination.berth.x-dockingRules(def).distance-2,11,def.destination.berth.z);
   }
   update(tide:number,target:{x:number;z:number}|undefined):void {
     this.root.position.y=tide;this.suggestion.visible=!!target;

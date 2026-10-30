@@ -110,7 +110,7 @@ test('interpolation stays continuous through north and does not mutate physics',
 });
 test('Dinard quay also opposes a slow lateral docking approach',()=>{
   const boat=new VesselDynamics({x:-957,z:1120,heading:0}),contact=new ShoreContact();boat.state.sway=-.3;
-  const initial={...contact.evaluate(boat.state)};assert.ok(initial.x>0);assert.match(contact.label,/Clair de Lune/);
+  const initial={...contact.evaluate(boat.state)};assert.ok(initial.x>0);assert.equal(contact.label,'');assert.equal(contact.impactSpeed,0);
   for(let i=0;i<600;i++)boat.step(1/60,contact.evaluate(boat.state));
   assert.ok(boat.state.x>-959);assert.ok(Object.values(boat.state).every(Number.isFinite));
 });

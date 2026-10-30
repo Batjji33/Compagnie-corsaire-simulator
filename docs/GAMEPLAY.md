@@ -32,9 +32,11 @@ libre alimentent les statistiques locales.
    dès le dernier point suggéré, puis réduire sous 5 nd dans les 220 derniers mètres.
    Le neutre ne freine pas immédiatement : utiliser progressivement la marche arrière.
 6. **Accostage** : rejoindre le côté est du ponton, centre du navire dans un rayon de
-   12 m autour de la zone ocre. S'aligner nord–sud à ±20°, rester sous 0,7 nd, moteurs
-   au neutre, sans contact ni échouement, avec faible rotation pendant 4 secondes.
-   Les critères s'affichent en direct. **Amarrer et débarquer** devient alors disponible.
+   30 m autour du repère ocre agrandi (rayon multiplié par 2,5). À strictement moins
+   de 2 nd, **Amarrer et débarquer** est disponible immédiatement, sans cap imposé,
+   sans passage obligatoire au neutre et sans attente de stabilité. Le HUD indique la distance,
+   la vitesse et la raison d'un éventuel blocage. Un contact incident ou un dégagement
+   sous la quille inférieur ou égal à 0,3 m empêche l'amarrage.
 7. **Débarquement** : le bateau est maintenu à poste pendant 12 secondes. La mission
    se valide seulement lorsque tous les passagers sont débarqués.
 8. **Bilan** : consulter les quatre critères et la note globale, puis recommencer
@@ -52,6 +54,16 @@ instruments restent réglables.
 - Sécurité : 35 % ; contacts, dégâts, excès de vitesse et échouements sont pénalisés.
 - Confort : 20 % ; accélérations et efforts latéraux brusques diminuent la note.
 - Manœuvres : 25 % ; contacts et reprises au point sûr réduisent la note.
+
+Aux quais, les boudins protègent les appuis latéraux : le navire reste repoussé
+physiquement et ne traverse pas le quai, mais ces appuis ne déclenchent ni contact
+incident, ni dégâts, ni pénalité et n'empêchent pas l'amarrage. Les touches par
+l'avant ou l'arrière restent des incidents. Cette protection ne s'applique pas aux
+côtes, rochers et autres navires : leurs contacts restent actifs sur toute la coque.
+
+Les valeurs par défaut sont partagées dans `src/missions/docking.ts`. Le calcul
+d'amarrage, le briefing, le HUD et la taille du repère ocre utilisent les mêmes règles.
+Les nouvelles traversées les héritent en omettant le champ `docking` de leur définition.
 
 Une coque endommagée à 85 %, plus de 15 secondes cumulées d'échouement, la sortie
 de la zone de jeu ou 20 minutes sans arrivée interrompent la mission avec une raison
