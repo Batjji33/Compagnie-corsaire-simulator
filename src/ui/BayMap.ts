@@ -1,9 +1,10 @@
 import { SHOALS } from '../weather/Marine';
 import { BAY, BUOYS, DOCKS, LANDS, ROUTE } from '../world/geography';
+import { icon } from './icons';
 export function bayMapMarkup(): string {
   const width=BAY.maxX-BAY.minX, height=BAY.maxZ-BAY.minZ;
   return `<aside id="bay-map" hidden aria-label="Carte schématique de la baie">
-    <h2>La baie, en repères</h2>
+    <div class="panel-title"><h2>La baie, en repères</h2><button id="map-close" aria-label="Fermer la carte">${icon('close')}</button></div>
     <svg viewBox="${BAY.minX} ${BAY.minZ} ${width} ${height}" role="img" aria-label="Saint-Malo à l’est, Dinard au sud-ouest, les forts au nord. Traversée schématique en pointillés.">
       ${LANDS.map(land=>`<polygon points="${land.outline.map(p=>p.join(',')).join(' ')}"/>`).join('')}
       ${SHOALS.map(a=>`<ellipse class="map-shoal" cx="${a.x}" cy="${a.z}" rx="${a.rx}" ry="${a.rz}"/>`).join('')}

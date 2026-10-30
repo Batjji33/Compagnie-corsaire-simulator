@@ -3,6 +3,7 @@ import type { GameStore } from '../saves/GameStore';
 import { MaritimeAudio } from '../audio/MaritimeAudio';
 import { TourGuide,validateComment } from '../excursions/comments';
 import type { TourComment } from '../excursions/comments';
+import { icon } from './icons';
 
 export class Immersion {
   readonly panel=document.createElement('section');
@@ -16,6 +17,7 @@ export class Immersion {
   private hornClickTimer:ReturnType<typeof setTimeout>|undefined;
   private status=document.createElement('output');
   private caption=document.createElement('p');
+  private notice=document.createElement('details');
   private saveTimer:ReturnType<typeof setTimeout>|undefined;
   constructor(private world:World,private store:GameStore,open:()=>void){
     const options={signal:this.abort.signal},prefs=store.data.immersion;
@@ -54,7 +56,7 @@ export class Immersion {
       const c=this.guide.choose(get<HTMLSelectElement>('tour-select').value);if(c){this.showComment(c);if(!this.guide.muted)this.audio.speak(c.text,true);this.render();}
     },options);
     get('tour-stop').addEventListener('click',()=>{this.audio.stopSpeech();this.render();},options);
-    get('tour-dismiss').addEventListener('click',()=>{this.audio.stopSpeech();this.guide.dismiss();this.caption.textContent='En attente du prochain point touristique.';this.render();},options);
+    get('tour-dismiss').addEventListener('click',()=>{this.audio.stopSpeech();this.guide.dismiss();this.notice.hidden=true;this.notice.open=false;this.render();},options);
     get('tour-save').addEventListener('click',()=>this.saveComment(),options);
     get('tour-new').addEventListener('click',()=>{
       const select=get<HTMLSelectElement>('tour-select'),option=document.createElement('option');option.value='new';option.textContent='Nouveau commentaire';select.append(option);select.value='new';
@@ -62,12 +64,13 @@ export class Immersion {
       for(const [id,value] of [['tour-x',Math.round(s.x)],['tour-z',Math.round(s.z)],['tour-radius',200]] as const)get<HTMLInputElement>(id).value=String(value);
       this.panel.querySelector<HTMLDetailsElement>('.tour-editor')!.open=true;get('tour-title').focus();
     },options);
-    // Keep all immersion controls in the existing footer, outside the sea view.
+    // Secondary actions live in a compact overlay at the lower edge.
     const footer=document.querySelector('footer')!,summary=footer.firstElementChild!;
-    this.tools.className='footer-tools';this.button.id='excursion-toggle';this.button.textContent='Excursion';this.button.addEventListener('click',open,options);
+    this.tools.className='footer-tools';this.button.id='excursion-toggle';this.button.innerHTML=`${icon('tour')}<span>Excursion</span>`;this.button.addEventListener('click',open,options);
+    this.button.setAttribute('aria-label','Ouvrir les excursions et l’ambiance sonore');
     this.soundButton.id='sound-toggle';this.soundButton.addEventListener('click',()=>{this.audio.apply({...this.audio.settings,enabled:!this.audio.settings.enabled});this.audio.unlock();this.persist();this.render();},options);
     this.tools.append(footer.querySelector('.helm-help')!,this.button,this.soundButton,document.getElementById('pause')!);footer.append(this.tools);
-    this.hornButton.id='fog-horn';this.hornButton.textContent='Corne de brume';this.hornButton.title='Maintenir pour sonner (8 secondes maximum)';this.hornButton.setAttribute('aria-label','Corne de brume : maintenir pour sonner');this.hornButton.setAttribute('aria-pressed','false');
+    this.hornButton.id='fog-horn';this.hornButton.innerHTML=`${icon('horn')}<span>Corne de brume</span>`;this.hornButton.title='Maintenir pour sonner (8 secondes maximum)';this.hornButton.setAttribute('aria-label','Corne de brume : maintenir pour sonner');this.hornButton.setAttribute('aria-pressed','false');
     document.querySelector('.helm-actions')!.append(this.hornButton);
     const startHorn=()=>{
       clearTimeout(this.hornClickTimer);
@@ -81,7 +84,9 @@ export class Immersion {
     this.hornButton.addEventListener('keyup',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();stopHorn();}},options);
     this.hornButton.addEventListener('click',e=>{if(e.detail===0){startHorn();this.hornClickTimer=setTimeout(stopHorn,900);}},options);
     window.addEventListener('blur',stopHorn,options);
-    this.status.id='passenger-status';this.status.setAttribute('aria-live','off');summary.append(this.status);this.caption.id='tour-caption';this.caption.setAttribute('aria-live','polite');summary.append(this.caption);
+    this.status.id='passenger-status';this.status.setAttribute('aria-live','off');summary.append(this.status);
+    this.notice.className='tour-notice';this.notice.hidden=true;this.notice.innerHTML=`<summary>${icon('tour')}<span id="tour-notice-title" aria-live="polite">Annonce touristique</span><span class="tour-read">Lire</span></summary>`;
+    this.caption.id='tour-caption';this.notice.append(this.caption);footer.append(this.notice);
     document.getElementById('app')!.classList.add('immersion-ready');
     window.addEventListener('pointerdown',()=>this.audio.unlock(),options);window.addEventListener('keydown',()=>this.audio.unlock(),options);
     document.addEventListener('visibilitychange',()=>{if(document.hidden)this.audio.setPaused(true);},options);
@@ -116,16 +121,18 @@ export class Immersion {
     clearTimeout(this.saveTimer);this.saveTimer=setTimeout(()=>{void this.store.save();},250);
   }
   setPaused(paused:boolean):void {clearTimeout(this.hornClickTimer);this.audio.setPaused(paused);this.hornButton.disabled=paused;this.hornButton.setAttribute('aria-pressed','false');}
-  reset(visited:string[]=[]):void {this.guide.reset();this.guide.visited=new Set(visited.filter(id=>this.guide.comments.some(c=>c.id===id)));this.caption.textContent='Les commentaires touristiques sont proposés pendant la traversée.';}
+  reset(visited:string[]=[]):void {this.guide.reset();this.guide.visited=new Set(visited.filter(id=>this.guide.comments.some(c=>c.id===id)));this.caption.textContent='';this.notice.hidden=true;this.notice.open=false;}
   update(dt:number):void {
     const s=this.world.vessel.dynamics.state,c=this.guide.update(dt,s.x,s.z);
     if(c){this.showComment(c);if(!this.guide.manual&&!this.guide.muted)this.audio.speak(c.text);}
   }
-  private showComment(c:TourComment):void {this.caption.textContent=`${c.title} : ${c.text}`;}
+  private showComment(c:TourComment):void {this.caption.textContent=c.text;this.notice.querySelector('#tour-notice-title')!.textContent=c.title;this.notice.hidden=false;}
   render():void {
-    const p=this.world.passengers,status=` · ${p.count} passagers · satisfaction ${Math.round(p.satisfaction)} %`;
+    const p=this.world.passengers,status=`${p.count} passagers · satisfaction ${Math.round(p.satisfaction)} %`;
     if(this.status.textContent!==status)this.status.textContent=status;
-    this.soundButton.textContent=this.audio.settings.enabled?'Son : oui':'Son : non';this.soundButton.setAttribute('aria-pressed',String(this.audio.settings.enabled));
+    const enabled=this.audio.settings.enabled;
+    if(this.soundButton.getAttribute('aria-pressed')!==String(enabled))this.soundButton.innerHTML=`${icon(enabled?'sound':'muted')}<span>${enabled?'Son actif':'Son coupé'}</span>`;
+    this.soundButton.setAttribute('aria-pressed',String(enabled));this.soundButton.setAttribute('aria-label',enabled?'Couper le son':'Activer le son');
     this.hornButton.setAttribute('aria-pressed',String(this.audio.hornActive));
     const voiceStatus=this.panel.querySelector('#voice-status')!;if(voiceStatus.textContent!==this.audio.voiceStatus)voiceStatus.textContent=this.audio.voiceStatus;
     this.panel.querySelector<HTMLButtonElement>('#tour-play')!.disabled=this.guide.muted;
@@ -134,6 +141,6 @@ export class Immersion {
   }
   dispose():void {
     clearTimeout(this.saveTimer);clearTimeout(this.hornClickTimer);this.abort.abort();this.audio.dispose();this.hornButton.remove();this.panel.remove();
-    const footer=document.querySelector('footer')!;footer.append(this.tools.querySelector('.helm-help')!,document.getElementById('pause')!);this.tools.remove();this.caption.remove();this.status.remove();document.getElementById('app')!.classList.remove('immersion-ready');
+    const footer=document.querySelector('footer')!;footer.append(this.tools.querySelector('.helm-help')!,document.getElementById('pause')!);this.tools.remove();this.notice.remove();this.status.remove();document.getElementById('app')!.classList.remove('immersion-ready');
   }
 }

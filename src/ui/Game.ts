@@ -10,6 +10,7 @@ import { GameStore, readMarine, recordResult } from '../saves/GameStore';
 import { SEA, SEA_LABELS, degrees } from '../weather/Marine';
 import { MissionMarkers } from '../world/MissionMarkers';
 import { Immersion } from './Immersion';
+import { icon } from './icons';
 
 const names:Record<MissionPhase,string>={preparation:'Préparation',boarding:'Embarquement',departure:'Départ',crossing:'Traversée',approach:'Approche',docking:'Accostage',unloading:'Débarquement',complete:'Bilan',failed:'Mission interrompue'};
 const clock=(seconds:number)=>`${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
@@ -37,14 +38,16 @@ export class Game {
     this.dialog.id='game-menu';this.dialog.setAttribute('aria-labelledby','game-menu-title');
     this.dialog.innerHTML='<div class="game-dialog-header"><span>Compagnie Corsaire Simulator</span><button data-action="home" aria-label="Menu principal">Menu</button></div><div id="menu-content"></div>';
     document.querySelector('#app')!.append(this.dialog);
-    this.menuButton.id='game-menu-toggle';this.menuButton.textContent='Menu';this.menuButton.setAttribute('aria-haspopup','dialog');
+    this.menuButton.id='game-menu-toggle';this.menuButton.innerHTML=`${icon('menu')}<span>Menu</span>`;this.menuButton.setAttribute('aria-haspopup','dialog');
+    this.menuButton.setAttribute('aria-label','Ouvrir le menu principal');
     document.querySelector('.header-actions')!.prepend(this.menuButton);
     this.menuButton.addEventListener('click',()=>this.show('home'),options);
     this.hud.id='mission-hud';this.hud.hidden=true;this.hud.setAttribute('aria-label','Objectif de mission');
-    this.hud.innerHTML='<div class="objective-top"><strong id="objective-phase"></strong><span id="objective-time"></span></div><p id="objective-comment"></p><p id="objective-guidance"></p><div class="objective-actions"><button id="mission-action"></button><button id="mission-details" aria-expanded="false">Étapes</button></div><ol id="objective-steps" hidden></ol>';
-    document.querySelector('.helm-center')!.append(this.hud);
+    this.hud.innerHTML='<div class="objective-top"><strong id="objective-phase"></strong><span id="objective-time"></span></div><p id="objective-guidance"></p><div class="objective-actions"><button id="mission-action"></button><button id="mission-details" aria-expanded="false" aria-controls="objective-details">Journal de bord</button></div><div id="objective-details" hidden><p id="objective-comment"></p><ol id="objective-steps"></ol></div>';
+    document.querySelector('.viewport')!.append(this.hud);
     this.hud.querySelector('#mission-action')!.addEventListener('click',()=>this.action(),options);
-    this.hud.querySelector('#mission-details')!.addEventListener('click',()=>{const steps=this.hud.querySelector<HTMLElement>('#objective-steps')!;steps.hidden=!steps.hidden;this.hud.querySelector('#mission-details')!.setAttribute('aria-expanded',String(!steps.hidden));},options);
+    this.hud.querySelector('#mission-details')!.addEventListener('click',()=>{const details=this.hud.querySelector<HTMLElement>('#objective-details')!;details.hidden=!details.hidden;this.hud.querySelector('#mission-details')!.setAttribute('aria-expanded',String(!details.hidden));},options);
+    this.hud.addEventListener('keydown',e=>{if(e.key==='Escape'){this.hud.querySelector<HTMLElement>('#objective-details')!.hidden=true;this.hud.querySelector('#mission-details')!.setAttribute('aria-expanded','false');}},options);
     this.dialog.addEventListener('click',e=>{
       const button=(e.target as HTMLElement).closest<HTMLButtonElement>('[data-action]');if(!button)return;
       const action=button.dataset.action!;
@@ -79,7 +82,8 @@ export class Game {
   }
   private setPaused(value:boolean):void {
     this.paused=value;this.pauseLoop(value);this.helm.clearKeys();this.helm.setEnabled(!value&&!this.world.vessel.moored);
-    this.ui.pause.textContent=value?'Reprendre':'Pause';this.ui.pause.setAttribute('aria-pressed',String(value));
+    this.ui.pause.innerHTML=`${icon('pause')}<span>${value?'Reprendre':'Pause'}</span>`;this.ui.pause.setAttribute('aria-pressed',String(value));
+    this.ui.pause.setAttribute('aria-label',value?'Reprendre la navigation':'Mettre en pause');
     this.immersion?.setPaused(value);
   }
   togglePause():void {if(!this.started){this.show('home');return;}if(this.paused)this.resume();else this.show('home');}

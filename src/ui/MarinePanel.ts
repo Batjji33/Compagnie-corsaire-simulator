@@ -4,6 +4,7 @@ import type { SeaState } from '../weather/Marine';
 import { ROCKS } from '../world/geography';
 import type { InstrumentLayout } from '../saves/GameStore';
 import type { Traffic } from '../traffic/Traffic';
+import { icon } from './icons';
 
 /** UI samples physics at 5 Hz; no independent instrument simulation. */
 export class MarinePanel {
@@ -11,6 +12,8 @@ export class MarinePanel {
   private panels:HTMLElement[]=[];
   private timer=0;
   private alert:HTMLElement;
+  private range=500;
+  private compact=matchMedia('(max-height:700px), (max-width:600px)').matches;
   constructor(private vessel:Vessel,private traffic?:Traffic) {
     const m=vessel.marine,options={signal:this.abort.signal};
     const settings=document.querySelector('#settings')!;
@@ -34,16 +37,30 @@ export class MarinePanel {
     settings.querySelector('#repair-hull')!.addEventListener('click',()=>{m.damage=0;},options);
     const viewport=document.querySelector<HTMLElement>('.viewport')!;
     this.alert=document.createElement('div');this.alert.className='marine-alert';this.alert.setAttribute('role','status');viewport.append(this.alert);
-    this.addPanel('navigation','Navigation',`<div class="marine-readings"><div>Compas / cap<strong id="nav-heading"></strong></div><div>Vitesse fond<strong id="nav-speed"></strong></div><div>Sondeur<strong id="nav-depth"></strong></div><div>Sous la quille<strong id="nav-clearance"></strong></div></div><p id="nav-condition"></p><p id="nav-tide"></p><p id="nav-hull"></p><p id="nav-position"></p><small>Simulation fictive · carte GPS via « Carte »</small>`,!matchMedia('(max-width:600px)').matches);
-    const quick=document.createElement('button');quick.className='instrument-quick';quick.textContent='Instruments';quick.setAttribute('aria-controls','marine-navigation');
+    this.addPanel('navigation','Navigation',`<div class="marine-readings"><div>Compas / cap<strong id="nav-heading"></strong></div><div>Vitesse fond<strong id="nav-speed"></strong></div><div>Sondeur<strong id="nav-depth"></strong></div><div>Sous la quille<strong id="nav-clearance"></strong></div></div><p id="nav-condition"></p><p id="nav-tide"></p><p id="nav-hull"></p><p id="nav-position"></p><small>Simulation fictive · carte GPS via « Carte »</small>`,false);
+    const quick=document.createElement('button');quick.className='instrument-quick';quick.innerHTML=`${icon('instruments')}<span>Instruments</span>`;quick.setAttribute('aria-controls','marine-navigation');quick.setAttribute('aria-label','Afficher ou masquer les instruments');quick.title='Instruments de navigation';
     const toggleNavigation=()=>{const checkbox=document.querySelector<HTMLInputElement>('#instrument-switches input')!;checkbox.checked=!checkbox.checked;checkbox.dispatchEvent(new Event('change'));};
-    quick.addEventListener('click',toggleNavigation,options);viewport.append(quick);
-    this.addPanel('radar','Radar · nord en haut',`<svg id="radar-screen" viewBox="-160 -160 320 320" role="img" aria-label="Obstacles dans un rayon de 500 mètres"><defs><clipPath id="radar-clip"><circle r="150"/></clipPath></defs><circle class="radar-ring" r="150"/><circle class="radar-ring" r="75"/><path class="radar-ring" d="M-150 0H150 M0 -150V150"/><g id="radar-returns" clip-path="url(#radar-clip)"></g><path id="radar-ship" d="M0 -9L5 7L0 4L-5 7Z"/><text x="-5" y="-136">N</text></svg><small>Portée 500 m · côtes, quais, rochers<br>Hauts-fonds en pointillés · trafic mobile en vert</small><p id="radar-traffic-status"></p>`,false);
-    settings.querySelector('#reset-instruments')!.addEventListener('click',()=>{for(const panel of this.panels){panel.style.left='';panel.style.top='';}this.clampPanels();},options);
-    window.addEventListener('resize',()=>this.clampPanels(),options);
+    quick.addEventListener('click',toggleNavigation,options);document.querySelector('.header-actions')!.append(quick);
+    this.addPanel('radar','Radar',`<svg id="radar-screen" viewBox="-168 -168 336 336" role="img" aria-label="Obstacles et trafic dans un rayon de 500 mètres, nord en haut"><defs><clipPath id="radar-clip"><circle r="150"/></clipPath></defs><circle class="radar-ground" r="151"/><g id="radar-returns" clip-path="url(#radar-clip)"></g><circle class="radar-ring" r="150"/><circle class="radar-ring" r="100"/><circle class="radar-ring" r="50"/><path class="radar-grid" d="M-150 0H150 M0 -150V150 M-106 -106L106 106 M-106 106L106 -106"/><path id="radar-heading-line" d="M0 0V-145"/><path id="radar-ship" d="M0 -10L6 8L0 4L-6 8Z"/><text class="radar-north" x="0" y="-155">N</text><text x="158" y="4">E</text><text x="0" y="165">S</text><text x="-159" y="4">O</text></svg><div class="radar-legend"><span>● Trafic</span><span>◌ Hauts-fonds</span></div><p id="radar-traffic-status"></p>`,matchMedia('(min-height:700px) and (min-width:700px)').matches);
+    const radar=this.panels[1],range=document.createElement('button');range.id='radar-range';range.textContent='500 m';range.title='Changer la portée du radar';range.setAttribute('aria-label','Portée radar : 500 mètres. Changer la portée');
+    radar.querySelector('.instrument-title')!.insertBefore(range,radar.querySelector('.instrument-close'));
+    range.addEventListener('click',()=>{const ranges=[250,500,1000];this.range=ranges[(ranges.indexOf(this.range)+1)%ranges.length];range.textContent=`${this.range} m`;range.setAttribute('aria-label',`Portée radar : ${this.range} mètres. Changer la portée`);document.getElementById('radar-screen')!.setAttribute('aria-label',`Obstacles et trafic dans un rayon de ${this.range} mètres, nord en haut`);this.refresh();},options);
+    const radarToggle=document.createElement('button');radarToggle.id='radar-toggle';radarToggle.innerHTML=`${icon('radar')}<span>Radar</span>`;radarToggle.setAttribute('aria-controls','marine-radar');radarToggle.setAttribute('aria-label','Afficher ou masquer le radar');radarToggle.title='Radar';
+    radarToggle.addEventListener('click',()=>{const input=document.querySelectorAll<HTMLInputElement>('#instrument-switches input')[1];input.checked=!input.checked;input.dispatchEvent(new Event('change'));},options);
+    document.querySelector('.header-actions')!.insertBefore(radarToggle,quick);
+    settings.querySelector('#reset-instruments')!.addEventListener('click',()=>{for(const panel of [...this.panels,document.getElementById('bay-map')!]){panel.style.left='';panel.style.top='';panel.style.right='';}this.clampPanels();},options);
+    window.addEventListener('resize',()=>{
+      const compact=matchMedia('(max-height:700px), (max-width:600px)').matches;
+      if(compact&&!this.compact){
+        const input=document.querySelectorAll<HTMLInputElement>('#instrument-switches input')[1];
+        input.checked=false;input.dispatchEvent(new Event('change'));
+      }
+      this.compact=compact;this.clampPanels();
+    },options);
+    viewport.addEventListener('keydown',e=>{if(e.key==='Escape')for(const panel of this.panels){if(!panel.hidden){panel.querySelector<HTMLButtonElement>('.instrument-close')!.click();}}},options);
     // Make the original GPS map movable without replacing its controls or contents.
     const map=document.querySelector<HTMLElement>('#bay-map')!;
-    const handle=document.createElement('button');handle.className='instrument-handle';handle.textContent='Déplacer la carte GPS';map.prepend(handle);this.drag(map,handle);
+    const handle=document.createElement('button');handle.className='instrument-handle map-handle';handle.textContent='Carte GPS · déplacer';map.prepend(handle);this.drag(map,handle);
     this.refresh();
   }
   syncSettings():void {
@@ -59,29 +76,31 @@ export class MarinePanel {
   }
   restoreLayout(layout:InstrumentLayout):void {
     for(const el of [...this.panels,document.getElementById('bay-map')!]){
-      const saved=layout[el.id];if(!saved)continue;el.hidden=!saved.visible;
+      const saved=layout[el.id];if(!saved)continue;el.hidden=!saved.visible||(el.id==='marine-radar'&&this.compact);
       if(saved.left!==null&&saved.top!==null)this.place(el,saved.left,saved.top);
     }
     document.querySelectorAll<HTMLInputElement>('#instrument-switches input').forEach((input,i)=>{input.checked=!this.panels[i].hidden;});
     document.getElementById('map-toggle')?.setAttribute('aria-expanded',String(!document.getElementById('bay-map')!.hidden));
+    this.syncToggles();this.clampPanels();
   }
   private addPanel(id:string,title:string,content:string,visible:boolean):void {
     const panel=document.createElement('aside');panel.id=`marine-${id}`;panel.className='marine-panel';panel.hidden=!visible;
-    panel.innerHTML=`<div class="instrument-title"><button class="instrument-handle" aria-label="Déplacer ${title}">${title} ↔</button><button class="instrument-close" aria-label="Masquer ${title}">×</button></div>${content}`;
+    panel.innerHTML=`<div class="instrument-title"><button class="instrument-handle" aria-label="Déplacer ${title}">${title}</button><button class="instrument-close" aria-label="Masquer ${title}">${icon('close')}</button></div>${content}`;
     document.querySelector('.viewport')!.append(panel);this.panels.push(panel);
     const label=document.createElement('label');label.className='check';label.innerHTML=`<input type="checkbox" ${visible?'checked':''}>${title}`;document.querySelector('#instrument-switches')!.append(label);
     const checkbox=label.querySelector('input')!,options={signal:this.abort.signal};
-    checkbox.addEventListener('change',()=>{panel.hidden=!checkbox.checked;this.clampPanels();},options);
-    panel.querySelector('.instrument-close')!.addEventListener('click',()=>{panel.hidden=true;checkbox.checked=false;},options);
+    checkbox.addEventListener('change',()=>{panel.hidden=!checkbox.checked;this.clampPanels();this.syncToggles();},options);
+    panel.querySelector('.instrument-close')!.addEventListener('click',()=>{panel.hidden=true;checkbox.checked=false;this.syncToggles();document.querySelector<HTMLElement>(id==='radar'?'#radar-toggle':'.instrument-quick')?.focus();},options);
     this.drag(panel,panel.querySelector<HTMLElement>('.instrument-handle')!);
   }
   private place(panel:HTMLElement,x:number,y:number):void {
     const parent=panel.parentElement!;
     panel.style.left=`${Math.max(0,Math.min(parent.clientWidth-panel.offsetWidth,x))}px`;
-    panel.style.top=`${Math.max(0,Math.min(parent.clientHeight-48,y))}px`;
+    panel.style.top=`${Math.max(0,Math.min(parent.clientHeight-panel.offsetHeight,y))}px`;
     panel.style.right='auto';
   }
-  private clampPanels():void {for(const p of this.panels)if(!p.hidden)this.place(p,p.offsetLeft,p.offsetTop);}
+  private clampPanels():void {for(const p of [...this.panels,document.getElementById('bay-map')!])if(!p.hidden&&p.style.left)this.place(p,parseFloat(p.style.left),parseFloat(p.style.top));}
+  private syncToggles():void {document.querySelector('.instrument-quick')?.setAttribute('aria-expanded',String(!this.panels[0].hidden));document.getElementById('radar-toggle')?.setAttribute('aria-expanded',String(!this.panels[1]?.hidden));}
   private drag(panel:HTMLElement,handle:HTMLElement):void {
     let drag:{id:number;x:number;y:number;left:number;top:number}|undefined;
     const options={signal:this.abort.signal};
@@ -95,22 +114,26 @@ export class MarinePanel {
   }
   private refresh():void {
     const s=this.vessel.dynamics.state,m=this.vessel.marine,reading=instruments(s);
-    document.querySelector('.instrument-quick')?.setAttribute('aria-expanded',String(!this.panels[0].hidden));
-    const set=(id:string,text:string)=>{document.getElementById(id)!.textContent=text;};
+    this.syncToggles();
+    const set=(id:string,text:string)=>{const el=document.getElementById(id)!;if(el.textContent!==text)el.textContent=text;};
     set('nav-position',`GPS local : E ${s.x.toFixed(0)} m · S ${s.z.toFixed(0)} m`);
     set('nav-heading',`${String(reading.heading).padStart(3,'0')}°`);set('nav-speed',`${reading.speed.toFixed(1)} nd`);
     set('nav-depth',`${m.depth.toFixed(1)} m`);set('nav-clearance',`${m.clearance.toFixed(1)} m`);
+    set('ship-clearance-value',m.clearance.toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1}));document.getElementById('ship-clearance')!.classList.toggle('danger',m.clearance<1);
     set('nav-condition',`Vent ${m.wind.toFixed(0)} nd de ${Math.round(m.direction)%360}° · Vagues ${m.waves.toFixed(1)} m · Visibilité ${(m.visibility/1000).toFixed(1)} km`);
     set('nav-tide',`${String(Math.floor(m.hour)).padStart(2,'0')}:${String(Math.floor(m.hour%1*60)).padStart(2,'0')} · Marée ${m.tide.toFixed(1)} m ${m.tideCycle?(Math.cos(m.tidePhase)>=0?'↗':'↘'):'fixe'} · Courant ${(Math.hypot(m.currentX,m.currentZ)/.514444).toFixed(1)} nd`);
     set('nav-hull',`Coque ${Math.round((1-m.damage)*100)} % · Puissance disponible ${Math.round(m.performance*100)} %${m.damageEnabled?'':' · Dégâts désactivés'}`);
     this.alert.hidden=!m.warning;if(this.alert.textContent!==m.warning)this.alert.textContent=m.warning;
     if(document.querySelector<HTMLElement>('#marine-radar')!.hidden)return;
-    const point=(x:number,z:number)=>`${((x-s.x)*.3).toFixed(1)},${((z-s.z)*.3).toFixed(1)}`;
-    document.getElementById('radar-returns')!.innerHTML=this.vessel.contact.obstacles.map(o=>`<polygon points="${o.polygon.map(p=>point(...p)).join(' ')}"/>`).join('')+ROCKS.map(r=>`<circle cx="${(r.x-s.x)*.3}" cy="${(r.z-s.z)*.3}" r="${r.radius*.7*.3}"/>`).join('')+SHOALS.map(a=>`<ellipse class="radar-shoal" cx="${(a.x-s.x)*.3}" cy="${(a.z-s.z)*.3}" rx="${a.rx*.3}" ry="${a.rz*.3}"/>`).join('');
+    const scale=150/this.range;
+    const point=(x:number,z:number)=>`${((x-s.x)*scale).toFixed(1)},${((z-s.z)*scale).toFixed(1)}`;
+    document.getElementById('radar-returns')!.innerHTML=this.vessel.contact.obstacles.map(o=>`<polygon points="${o.polygon.map(p=>point(...p)).join(' ')}"/>`).join('')+ROCKS.map(r=>`<circle cx="${(r.x-s.x)*scale}" cy="${(r.z-s.z)*scale}" r="${r.radius*.7*scale}"/>`).join('')+SHOALS.map(a=>`<ellipse class="radar-shoal" cx="${(a.x-s.x)*scale}" cy="${(a.z-s.z)*scale}" rx="${a.rx*scale}" ry="${a.rz*scale}"/>`).join('');
     const traffic=this.traffic?.enabled?this.traffic.agents.filter(a=>a.active):[];
     document.getElementById('radar-returns')!.innerHTML+=traffic.map(a=>`<path data-traffic="${a.route.id}" class="radar-traffic ${a.route.id===this.traffic?.risk?.id?'risk':''}" d="M0 -6L4 5L0 3L-4 5Z" transform="translate(${point(a.x,a.z).replace(',', ' ')}) rotate(${a.heading*180/Math.PI})"/>`).join('');
-    document.getElementById('radar-traffic-status')!.textContent=this.traffic?.risk?`Croisement : ${this.traffic.risk.name} - ${Math.round(this.traffic.risk.distance)} m`:`${traffic.length} navires actifs dans la baie`;
+    const nearby=traffic.filter(a=>Math.hypot(a.x-s.x,a.z-s.z)<=this.range).length;
+    document.getElementById('radar-traffic-status')!.textContent=this.traffic?.risk?`Croisement : ${this.traffic.risk.name} · ${Math.round(this.traffic.risk.distance)} m`:`${nearby} écho${nearby>1?'s':''} à portée · nord fixe`;
     document.getElementById('radar-ship')!.setAttribute('transform',`rotate(${reading.heading})`);
+    document.getElementById('radar-heading-line')!.setAttribute('transform',`rotate(${reading.heading})`);
   }
-  dispose():void {this.abort.abort();for(const panel of this.panels)panel.remove();this.alert.remove();}
+  dispose():void {this.abort.abort();for(const panel of this.panels)panel.remove();this.alert.remove();document.querySelector('.instrument-quick')?.remove();document.getElementById('radar-toggle')?.remove();}
 }
