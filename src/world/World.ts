@@ -15,6 +15,7 @@ import { Traffic, TRAFFIC_LIMITS } from '../traffic/Traffic';
 import { TrafficView } from './TrafficView';
 import { Passengers } from '../passengers/Passengers';
 import { PassengerView } from './PassengerView';
+import { WakeView } from './WakeView';
 
 export class World {
   readonly scene = new Scene();
@@ -22,6 +23,7 @@ export class World {
   readonly renderer: WebGLRenderer;
   readonly controls: OrbitControls;
   private ocean: Ocean;
+  private wake:WakeView;
   private daylight=createDaylight();
   private sky = new Sky();
   private quality: Quality;
@@ -49,8 +51,9 @@ export class World {
     this.sky.material.uniforms.turbidity.value = 3.5;
     this.sky.material.uniforms.rayleigh.value = 1.5;
     this.scene.add(this.sky);
-    this.ocean = new Ocean(quality);
-    this.scene.add(this.ocean.mesh);
+    this.vessel=new Vessel();
+    this.ocean = new Ocean(quality,this.vessel.water);this.wake=new WakeView(this.ocean);
+    this.scene.add(this.ocean.mesh,this.wake.mesh);
     this.environment = new BayEnvironment(quality);
     this.scene.add(this.environment.root);
     this.controls = new OrbitControls(this.camera, canvas);
@@ -63,7 +66,7 @@ export class World {
     this.controls.maxDistance = BAY.maxCameraDistance;
     this.controls.minPolarAngle = Math.PI * 0.12;
     this.controls.maxPolarAngle = Math.PI * 0.49;
-    this.vessel=new Vessel();this.scene.add(this.vessel.root,this.camera);
+    this.scene.add(this.vessel.root,this.camera);
     this.vesselCamera=new VesselCamera(this.camera,this.controls,this.vessel);
     this.traffic.limit=TRAFFIC_LIMITS[quality];
     this.trafficView=new TrafficView(this.traffic);this.scene.add(this.trafficView.root);
@@ -105,12 +108,14 @@ export class World {
     const v=this.vessel,m=v.marine;
     this.traffic.update(dt,v.dynamics.state,m.hour,m.waves,m.visibility);
     v.update(dt,this.traffic.contacts(v.dynamics.state));
+    this.wake.trail.update(dt,m.time,v.dynamics.state,v.moored);
     if(!m.warning&&this.traffic.risk)m.warning=`Trafic : ${this.traffic.risk.name} · croisement à surveiller`;
   }
+  resetWaterEffects():void {this.wake.trail.clear();}
   render(dt: number, time: number, alpha=1): void {
     this.vessel.render(time,alpha);
     this.trafficView.root.visible=this.traffic.enabled;
-    this.trafficView.render(this.vessel.marine.tide,time,this.camera.position);
+    this.trafficView.render(this.vessel.marine.tide,time,this.camera.position,this.vessel.water,this.vessel.waterOffset);
     this.passengerView.render(dt,time);
     const m=this.vessel.marine,light=m.daylight;
     this.daylight.sun.intensity=2.4*light;this.daylight.ambient.intensity=.65+1.05*light;
@@ -123,7 +128,6 @@ export class World {
     this.ocean.material.uniforms.uFog.value.copy(this.daylight.fog.color);
     this.ocean.material.uniforms.uFogNear.value=this.daylight.fog.near;
     this.ocean.material.uniforms.uFogFar.value=m.visibility;
-    this.ocean.material.uniforms.uAmplitude.value=m.waves/3;
     this.ocean.material.uniforms.uLight.value=light;
     this.renderer.toneMappingExposure=.55+.30*light;
     if(this.vesselCamera.mode==='explore') {
@@ -136,12 +140,12 @@ export class World {
     this.camera.position.y=Math.max(groundHeight(this.camera.position.x,this.camera.position.z)+8,this.camera.position.y);
     } else this.vesselCamera.update(dt);
     this.environment.update(this.camera.position,time);
-    this.ocean.update(time, this.camera.position);
-    this.ocean.mesh.position.y=m.tide;
+    this.ocean.update(m.time+this.vessel.waterOffset,this.controls.target,this.vessel.water,this.vessel.waterOffset,m.tide,m.waves,this.vessel.visual);
+    this.wake.render(m.time+this.vessel.waterOffset,m);
     this.renderer.render(this.scene, this.camera);
   }
   dispose(): void {
-    this.controls.dispose(); this.ocean.dispose(); this.environment.dispose();this.trafficView.dispose();this.passengerView.dispose(); this.vessel.dispose();
+    this.controls.dispose(); this.wake.dispose();this.ocean.dispose(); this.environment.dispose();this.trafficView.dispose();this.passengerView.dispose(); this.vessel.dispose();
     this.sky.geometry.dispose(); this.sky.material.dispose(); this.renderer.dispose();
   }
 }

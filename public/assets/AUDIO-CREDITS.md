@@ -2,7 +2,7 @@
 
 ## Sons
 
-Les moteurs, vagues, vent, ambiances portuaires, oiseaux et avertissements de
+Les moteurs, vagues, vent, ambiances portuaires, oiseaux, corne de brume et avertissements de
 Compagnie Corsaire Simulator sont des créations procédurales originales du projet,
 générées par `src/audio/MaritimeAudio.ts` avec Web Audio. Aucun enregistrement,
 échantillon, musique ou fichier sonore tiers n'est incorporé ou téléchargé.

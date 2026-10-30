@@ -2,12 +2,14 @@ import { Group, Mesh, MeshStandardMaterial, BoxGeometry, CylinderGeometry, ConeG
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { loft } from '../ships/ShipGeometry';
 import type { Traffic, TrafficAgent } from '../traffic/Traffic';
+import type { WaveField } from '../weather/Waves';
 
 export class TrafficView {
   readonly root=new Group();
   private boats:{root:Group;details:Group;agent:TrafficAgent}[]=[];
   private geometries=new Set<BufferGeometry>();
   private material=new MeshStandardMaterial({vertexColors:true,roughness:.8,side:DoubleSide});
+  private flotation={heave:0,pitch:0,roll:0};
   constructor(traffic:Traffic){
     const colors=[0xe9e6da,0x588d8b,0x2d4856,0xe4a16b];
     for(const [i,a] of traffic.agents.entries()){
@@ -53,10 +55,11 @@ export class TrafficView {
       root.add(details);root.name=a.route.name;this.root.add(root);this.boats.push({root,details,agent:a});
     }
   }
-  render(tide:number,time:number,camera:{x:number;z:number}):void {
+  render(tide:number,_time:number,camera:{x:number;z:number},water:WaveField,offset:number):void {
     for(const b of this.boats){const a=b.agent,cargo=a.route.kind==='cargo',distance=Math.hypot(a.x-camera.x,a.z-camera.z);
       b.root.visible=a.active&&distance<(cargo?6000:3000);if(!b.root.visible)continue;
-      b.root.position.set(a.x,tide+Math.sin(time*.8+a.x*.02)*(cargo?.015:.06),a.z);b.root.rotation.y=-a.heading;
+      if(distance<1500){water.hull(a.x,a.z,a.heading,a.route.length,a.route.beam,offset,this.flotation);b.root.position.set(a.x,tide+this.flotation.heave,a.z);b.root.rotation.set(this.flotation.pitch,-a.heading,this.flotation.roll,'YXZ');}
+      else {b.root.position.set(a.x,tide+water.height(a.x,a.z,offset),a.z);b.root.rotation.set(0,-a.heading,0);}
       b.details.visible=distance<(cargo?1800:900);
     }
   }

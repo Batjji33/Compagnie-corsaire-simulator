@@ -12,6 +12,8 @@ export class Immersion {
   private tools=document.createElement('div');
   private button=document.createElement('button');
   private soundButton=document.createElement('button');
+  private hornButton=document.createElement('button');
+  private hornClickTimer:ReturnType<typeof setTimeout>|undefined;
   private status=document.createElement('output');
   private caption=document.createElement('p');
   private saveTimer:ReturnType<typeof setTimeout>|undefined;
@@ -34,7 +36,7 @@ export class Immersion {
       <div class="tour-coordinates"><label>Est (m)<input id="tour-x" type="number" min="-5200" max="5200"></label><label>Sud (m)<input id="tour-z" type="number" min="-5200" max="5200"></label><label>Rayon (m)<input id="tour-radius" type="number" min="30" max="1500"></label></div>
       <div class="game-buttons"><button id="tour-save">Enregistrer</button><button id="tour-new">Nouveau à ma position</button></div><p id="tour-editor-status" role="status"></p></details>
       <h3>Ambiance sonore</h3><label class="check"><input id="audio-enabled" type="checkbox">Activer les sons</label>
-      ${[['master','Volume général'],['engines','Moteurs'],['waves','Vagues'],['wind','Vent'],['port','Port et oiseaux'],['alerts','Avertissements maritimes'],['voice','Voix des annonces']].map(([key,label])=>`<label class="volume-control" for="volume-${key}">${label}<output id="volume-${key}-value"></output><input id="volume-${key}" data-volume="${key}" type="range" min="0" max="100" step="1"></label>`).join('')}
+      ${[['master','Volume général'],['engines','Moteurs'],['waves','Vagues'],['wind','Vent'],['port','Port et oiseaux'],['alerts','Avertissements maritimes'],['horn','Corne de brume'],['voice','Voix des annonces']].map(([key,label])=>`<label class="volume-control" for="volume-${key}">${label}<output id="volume-${key}-value"></output><input id="volume-${key}" data-volume="${key}" type="range" min="0" max="100" step="1"></label>`).join('')}
       <p>Sons originaux synthétisés dans le navigateur, sans fichier externe. Les voix dépendent de votre appareil ; le texte reste disponible en l’absence de voix française.</p><a href="./assets/AUDIO-CREDITS.md" target="_blank" rel="noopener noreferrer">Crédits audio et touristiques</a>`;
     const get=<T extends HTMLElement>(id:string)=>this.panel.querySelector<T>(`#${id}`)!;
     for(const id of ['traffic-enabled','tour-automatic','tour-manual','tour-muted','audio-enabled'])get(id).addEventListener('change',()=>{
@@ -44,7 +46,7 @@ export class Immersion {
       if(this.guide.muted)this.audio.stopSpeech();this.audio.unlock();this.persist();this.render();
     },options);
     this.panel.querySelectorAll<HTMLInputElement>('[data-volume]').forEach(input=>input.addEventListener('input',()=>{
-      const key=input.dataset.volume as 'master'|'engines'|'waves'|'wind'|'port'|'alerts'|'voice';
+      const key=input.dataset.volume as 'master'|'engines'|'waves'|'wind'|'port'|'alerts'|'horn'|'voice';
       this.audio.apply({...this.audio.settings,[key]:Number(input.value)/100});get(`volume-${key}-value`).textContent=`${input.value} %`;this.persist();
     },options));
     get('tour-select').addEventListener('change',()=>this.fillEditor(),options);
@@ -65,6 +67,20 @@ export class Immersion {
     this.tools.className='footer-tools';this.button.id='excursion-toggle';this.button.textContent='Excursion';this.button.addEventListener('click',open,options);
     this.soundButton.id='sound-toggle';this.soundButton.addEventListener('click',()=>{this.audio.apply({...this.audio.settings,enabled:!this.audio.settings.enabled});this.audio.unlock();this.persist();this.render();},options);
     this.tools.append(footer.querySelector('.helm-help')!,this.button,this.soundButton,document.getElementById('pause')!);footer.append(this.tools);
+    this.hornButton.id='fog-horn';this.hornButton.textContent='Corne de brume';this.hornButton.title='Maintenir pour sonner (8 secondes maximum)';this.hornButton.setAttribute('aria-label','Corne de brume : maintenir pour sonner');this.hornButton.setAttribute('aria-pressed','false');
+    document.querySelector('.helm-actions')!.append(this.hornButton);
+    const startHorn=()=>{
+      clearTimeout(this.hornClickTimer);
+      if(!this.audio.settings.enabled){this.audio.apply({...this.audio.settings,enabled:true});this.persist();}
+      this.hornButton.setAttribute('aria-pressed',String(this.audio.startHorn()));this.render();
+    };
+    const stopHorn=()=>{clearTimeout(this.hornClickTimer);this.audio.stopHorn();this.hornButton.setAttribute('aria-pressed','false');};
+    this.hornButton.addEventListener('pointerdown',e=>{if(e.button!==0)return;e.preventDefault();this.hornButton.setPointerCapture(e.pointerId);startHorn();},options);
+    for(const event of ['pointerup','pointercancel','lostpointercapture','blur'])this.hornButton.addEventListener(event,stopHorn,options);
+    this.hornButton.addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();if(!e.repeat)startHorn();}},options);
+    this.hornButton.addEventListener('keyup',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();stopHorn();}},options);
+    this.hornButton.addEventListener('click',e=>{if(e.detail===0){startHorn();this.hornClickTimer=setTimeout(stopHorn,900);}},options);
+    window.addEventListener('blur',stopHorn,options);
     this.status.id='passenger-status';this.status.setAttribute('aria-live','off');summary.append(this.status);this.caption.id='tour-caption';this.caption.setAttribute('aria-live','polite');summary.append(this.caption);
     document.getElementById('app')!.classList.add('immersion-ready');
     window.addEventListener('pointerdown',()=>this.audio.unlock(),options);window.addEventListener('keydown',()=>this.audio.unlock(),options);
@@ -99,7 +115,7 @@ export class Immersion {
     this.store.data.immersion={audio:{...this.audio.settings},traffic:this.world.traffic.enabled,automatic:this.guide.automatic,manual:this.guide.manual,muted:this.guide.muted,comments:structuredClone(this.guide.comments)};
     clearTimeout(this.saveTimer);this.saveTimer=setTimeout(()=>{void this.store.save();},250);
   }
-  setPaused(paused:boolean):void {this.audio.setPaused(paused);}
+  setPaused(paused:boolean):void {clearTimeout(this.hornClickTimer);this.audio.setPaused(paused);this.hornButton.disabled=paused;this.hornButton.setAttribute('aria-pressed','false');}
   reset(visited:string[]=[]):void {this.guide.reset();this.guide.visited=new Set(visited.filter(id=>this.guide.comments.some(c=>c.id===id)));this.caption.textContent='Les commentaires touristiques sont proposés pendant la traversée.';}
   update(dt:number):void {
     const s=this.world.vessel.dynamics.state,c=this.guide.update(dt,s.x,s.z);
@@ -110,13 +126,14 @@ export class Immersion {
     const p=this.world.passengers,status=` · ${p.count} passagers · satisfaction ${Math.round(p.satisfaction)} %`;
     if(this.status.textContent!==status)this.status.textContent=status;
     this.soundButton.textContent=this.audio.settings.enabled?'Son : oui':'Son : non';this.soundButton.setAttribute('aria-pressed',String(this.audio.settings.enabled));
+    this.hornButton.setAttribute('aria-pressed',String(this.audio.hornActive));
     const voiceStatus=this.panel.querySelector('#voice-status')!;if(voiceStatus.textContent!==this.audio.voiceStatus)voiceStatus.textContent=this.audio.voiceStatus;
     this.panel.querySelector<HTMLButtonElement>('#tour-play')!.disabled=this.guide.muted;
     this.panel.querySelector<HTMLInputElement>('#audio-enabled')!.checked=this.audio.settings.enabled;
     this.audio.update(this.world.vessel.dynamics.state,this.world.vessel.marine,!!this.world.traffic.risk);
   }
   dispose():void {
-    clearTimeout(this.saveTimer);this.abort.abort();this.audio.dispose();this.panel.remove();
+    clearTimeout(this.saveTimer);clearTimeout(this.hornClickTimer);this.abort.abort();this.audio.dispose();this.hornButton.remove();this.panel.remove();
     const footer=document.querySelector('footer')!;footer.append(this.tools.querySelector('.helm-help')!,document.getElementById('pause')!);this.tools.remove();this.caption.remove();this.status.remove();document.getElementById('app')!.classList.remove('immersion-ready');
   }
 }

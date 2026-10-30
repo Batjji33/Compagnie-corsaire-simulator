@@ -47,7 +47,7 @@ export class PassengerView {
     this.quayBodies.count=this.quayHeads.count=count;
     const s=this.vessel.dynamics.state,dock=DOCKS.reduce((a,b)=>Math.hypot(s.x-a.point[0],s.z-a.point[1])<Math.hypot(s.x-b.point[0],s.z-b.point[1])?a:b);
     const sin=Math.sin(s.heading),cos=Math.cos(s.heading),side=Math.sign((dock.point[0]-s.x)*cos+(dock.point[1]-s.z)*sin)||1;
-    this.entry.set(s.x+cos*side*3.5-sin*3,this.vessel.marine.tide+2,s.z+sin*side*3.5+cos*3);
+    this.entry.set(s.x+cos*side*3.5-sin*3,this.vessel.root.position.y+2,s.z+sin*side*3.5+cos*3);
     this.landing.set(dock.point[0],5.05,dock.point[1]);this.direction.subVectors(this.landing,this.entry);
     this.gangway.visible=moving;this.gangway.position.copy(this.entry).add(this.landing).multiplyScalar(.5);this.gangway.scale.set(1.15,1,this.direction.length());this.gangway.quaternion.setFromUnitVectors(this.axis,this.direction.normalize());
     for(let i=0;i<count;i++){

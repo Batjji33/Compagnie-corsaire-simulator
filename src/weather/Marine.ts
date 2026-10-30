@@ -1,7 +1,8 @@
 import { BOAT, KNOT, clamp } from '../ships/parameters.ts';
 import { ROCKS } from '../world/geography.ts';
 import type { VesselState, ExternalForce } from '../physics/VesselDynamics.ts';
-export const SEA = { calme: [2, .15, 10000], belle: [10, .6, 7000], agitee: [24, 2.2, 2800] } as const;
+export const SEA = { calme: [2, .15, 10000], belle: [10, .6, 7000], agitee: [24, 2.2, 2800], tempete: [42, 5.2, 1500] } as const;
+export const SEA_LABELS={calme:'Calme',belle:'Belle mer',agitee:'Mer agitée',tempete:'Tempête'} as const;
 export type SeaState = keyof typeof SEA;
 export const SHOALS = [{x:-340,z:-560,rx:260,rz:190,depth:.5},{x:-150,z:150,rx:220,rz:160,depth:1.2},{x:-780,z:610,rx:160,rz:180,depth:2.3}];
 /** Fictional bathymetry in metres below mean sea level. */

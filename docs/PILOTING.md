@@ -71,7 +71,7 @@ La vitesse maximale de 19,5 nœuds résulte de l’équilibre poussée/traînée
 
 `ShoreContact` utilise trois cercles le long de la coque, des contours côtiers et des volumes de quai simplifiés. Les forces de ressort/amortisseur et le couple de contact évitent un arrêt arbitraire au simple changement de commande. Ce n’est pas un solveur naval de collision précis ; les bouées et détails de rambardes ne sont pas des obstacles physiques.
 
-L’état précédent et l’état courant sont interpolés au rendu. Roulis, tangage et pilonnement sont uniquement visuels, de faible amplitude ; la caméra suit la position et le cap planaires, sans reprendre l’oscillation de coque. Le cockpit est stabilisé et son architecture intérieure est une interprétation. La suspension d’onglet ne crée pas de rattrapage de minutes de simulation.
+L’état précédent et l’état courant sont interpolés au rendu. Roulis, tangage et pilonnement sont calculés à partir du même champ Gerstner que l’eau, par cinq échantillons sous la coque ; ils ne modifient pas le solveur de collisions planaires. La caméra suit le pilonnement et conserve un horizon stabilisé. Le cockpit est une interprétation. La suspension d’onglet ne crée pas de rattrapage de minutes de simulation. Voir [vagues, sillage et corne de brume](WATER.md).
 
 ## Validation et limites
 

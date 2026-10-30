@@ -12,7 +12,7 @@ sondage, chenal ou contour ne doit servir à la navigation réelle.
   **Replacer les instruments** retrouve leur emplacement initial.
 - **Carte** conserve la carte de la baie, le triangle du navire et le repère caméra.
   Sa poignée permet aussi de la déplacer. Les ellipses ocre repèrent les hauts-fonds.
-- **Réglages → Mer et navigation** propose trois états de mer, la direction du
+- **Réglages → Mer et navigation** propose quatre états de mer, dont Tempête, la direction du
   vent venant de, l'heure, la phase de marée et l'activation des cycles.
   La météo rejoint progressivement la consigne (constante de temps de 18 secondes).
 - Un jour dure 24 minutes de simulation et une marée 12 minutes. Pause suspend les
@@ -37,7 +37,9 @@ un rayon de 500 m. Les hauts-fonds pointillés sont une aide synthétique, pas d
 échos radar physiques. Il n'existe pas encore d'autres bateaux.
 
 Le vent et les courants sont des forces simplifiées dans la physique existante ;
-les vagues ajoutent des efforts oscillants, du roulis et du tangage. Le niveau de
+les vagues ajoutent des efforts oscillants. Six vagues Gerstner déforment réellement
+l’eau et déterminent le pilonnement, le roulis et le tangage du navire. Voir
+[le modèle d’eau et de sillage](WATER.md). Le niveau de
 la mer, le bateau et ses caméras suivent la même marée sinusoïdale de ±2,4 m.
 L'éclairage, le ciel, la mer et le brouillard suivent l'heure et la visibilité.
 Les côtes et quais restent des solides fixes ; les zones intertidales ne sont pas

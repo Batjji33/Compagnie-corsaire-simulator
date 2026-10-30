@@ -96,7 +96,7 @@ export class HelmControls {
   setEnabled(enabled:boolean):void {
     if(this.enabled===enabled)return;
     this.enabled=enabled;this.clearKeys();
-    this.panel.querySelectorAll<HTMLInputElement|HTMLButtonElement>('input,.helm-engines button,.rudder-control button').forEach(el=>{el.disabled=!enabled;});
+    this.panel.querySelectorAll<HTMLInputElement|HTMLButtonElement>('input,.helm-engines button,.rudder-control button:not(#fog-horn)').forEach(el=>{el.disabled=!enabled;});
   }
   dispose():void {this.abort.abort();this.panel.remove();this.help.remove();}
 }

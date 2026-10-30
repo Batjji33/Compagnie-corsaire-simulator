@@ -16,7 +16,7 @@ export class MarinePanel {
     const settings=document.querySelector('#settings')!;
     settings.insertAdjacentHTML('beforeend',`<h2>Mer et navigation</h2>
       <p>Données fictives. Ne jamais utiliser pour naviguer réellement.</p>
-      <label for="sea-state">État de mer visé</label><select id="sea-state"><option value="calme">Calme</option><option value="belle" selected>Belle mer</option><option value="agitee">Mer agitée</option></select>
+      <label for="sea-state">État de mer visé</label><select id="sea-state"><option value="calme">Calme</option><option value="belle" selected>Belle mer</option><option value="agitee">Mer agitée</option><option value="tempete">Tempête</option></select>
       <label for="wind-direction">Vent venant de (degrés)</label><input id="wind-direction" type="range" min="0" max="359" value="250">
       <label for="marine-hour">Heure simulée</label><input id="marine-hour" type="range" min="0" max="23.9" step=".1" value="14">
       <label for="tide-phase">Phase de marée (0–360°)</label><input id="tide-phase" type="range" min="0" max="360" value="0">

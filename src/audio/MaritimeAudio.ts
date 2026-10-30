@@ -2,12 +2,12 @@ import { clamp } from '../ships/parameters.ts';
 import { DOCKS } from '../world/geography.ts';
 import type { VesselState } from '../physics/VesselDynamics.ts';
 import type { Marine } from '../weather/Marine.ts';
-export interface AudioSettings {enabled:boolean;master:number;engines:number;waves:number;wind:number;port:number;alerts:number;voice:number}
-export const defaultAudio=():AudioSettings=>({enabled:false,master:.55,engines:.45,waves:.4,wind:.3,port:.25,alerts:.7,voice:.9});
+export interface AudioSettings {enabled:boolean;master:number;engines:number;waves:number;wind:number;port:number;alerts:number;horn:number;voice:number}
+export const defaultAudio=():AudioSettings=>({enabled:false,master:.55,engines:.45,waves:.4,wind:.3,port:.25,alerts:.7,horn:.7,voice:.9});
 export function readAudio(value:unknown):AudioSettings {
   const result=defaultAudio();if(!value||typeof value!=='object')return result;const v=value as Record<string,unknown>;
   if(typeof v.enabled==='boolean')result.enabled=v.enabled;
-  for(const key of ['master','engines','waves','wind','port','alerts','voice'] as const)if(typeof v[key]==='number'&&Number.isFinite(v[key]))result[key]=clamp(v[key],0,1);
+  for(const key of ['master','engines','waves','wind','port','alerts','horn','voice'] as const)if(typeof v[key]==='number'&&Number.isFinite(v[key]))result[key]=clamp(v[key],0,1);
   return result;
 }
 export function audioLevels(s:VesselState,waves:number,wind:number):{engine:number;wave:number;wind:number;port:number} {
@@ -26,6 +26,11 @@ export class MaritimeAudio {
   private speech:SpeechSynthesisUtterance|undefined;
   private voiceTimer:ReturnType<typeof setTimeout>|undefined;
   private disposed=false;
+  private noiseBuffer:AudioBuffer|undefined;
+  private hornWave:PeriodicWave|undefined;
+  private hornVoice:{gain:GainNode;sources:AudioScheduledSourceNode[];nodes:AudioNode[]}|undefined;
+  private hornTimer:ReturnType<typeof setTimeout>|undefined;
+  get hornActive():boolean {return !!this.hornVoice;}
   unlock():void {
     if(this.disposed||!this.settings.enabled)return;
     try{
@@ -33,7 +38,7 @@ export class MaritimeAudio {
         const c=this.context=new AudioContext();this.master=c.createGain();this.master.gain.value=0;this.master.connect(c.destination);
         for(const name of ['engines','waves','wind','port'] as const){const bus=c.createGain();bus.gain.value=0;bus.connect(this.master);this.buses[name]=bus;}
         for(const frequency of [38,42]){const osc=c.createOscillator(),filter=c.createBiquadFilter();osc.type='sawtooth';osc.frequency.value=frequency;filter.type='lowpass';filter.frequency.value=220;osc.connect(filter);filter.connect(this.buses.engines!);osc.start();this.sources.push(osc);this.engines.push(osc);}
-        const buffer=c.createBuffer(1,c.sampleRate*2,c.sampleRate),data=buffer.getChannelData(0);let seed=17;
+        const buffer=this.noiseBuffer=c.createBuffer(1,c.sampleRate*2,c.sampleRate),data=buffer.getChannelData(0);let seed=17;
         for(let i=0;i<data.length;i++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;data[i]=seed/2147483648-1;}
         for(const [name,frequency,type] of [['waves',480,'lowpass'],['wind',1100,'bandpass'],['port',150,'lowpass']] as const){
           const source=c.createBufferSource(),filter=c.createBiquadFilter();source.buffer=buffer;source.loop=true;filter.type=type;filter.frequency.value=frequency;filter.Q.value=.6;source.connect(filter);filter.connect(this.buses[name]!);source.start();this.sources.push(source);
@@ -44,11 +49,13 @@ export class MaritimeAudio {
   }
   setPaused(paused:boolean):void {
     this.paused=paused;
-    if(paused){this.stopSpeech();if(this.context?.state==='running')void this.context.suspend().catch(()=>{});}
+    if(paused){this.stopHorn(true);this.stopSpeech();if(this.context?.state==='running')void this.context.suspend().catch(()=>{});}
     else this.unlock();
   }
   apply(settings:AudioSettings):void {
     this.settings=readAudio(settings);
+    if(!this.settings.enabled||this.settings.master===0||this.settings.horn===0)this.stopHorn(true);
+    else if(this.hornVoice&&this.context)this.hornVoice.gain.gain.setTargetAtTime(this.settings.horn*.16,this.context.currentTime,.04);
     if(!this.settings.enabled||this.settings.master===0||this.settings.voice===0)this.stopSpeech();
     if(this.master&&this.context)this.master.gain.setTargetAtTime(this.settings.enabled&&!this.paused?this.settings.master:0,this.context.currentTime,.06);
     if(!this.settings.enabled&&this.context?.state==='running')void this.context.suspend().catch(()=>{});
@@ -72,6 +79,37 @@ export class MaritimeAudio {
     if(!this.settings.enabled||this.paused)return;
     if(this.settings.alerts>0)this.stopSpeech();
     this.tone(130,130,.45,this.settings.alerts*.07);this.tone(165,165,.45,this.settings.alerts*.045);
+  }
+  /** Called synchronously from the gesture: Safari can resume its context before scheduling notes. */
+  startHorn():boolean {
+    if(this.disposed||this.paused||!this.settings.enabled||this.settings.master===0||this.settings.horn===0)return false;
+    if(this.hornVoice)return true;
+    this.unlock();const c=this.context;if(!c||!this.master||c.state==='closed')return false;
+    try{
+      this.stopSpeech();const now=c.currentTime,volume=c.createGain(),filter=c.createBiquadFilter(),air=c.createGain();
+      filter.type='lowpass';filter.frequency.value=1200;filter.Q.value=.6;
+      volume.gain.setValueAtTime(0,now);volume.gain.linearRampToValueAtTime(this.settings.horn*.16,now+.14);
+      volume.connect(filter);filter.connect(this.master);this.master.gain.setTargetAtTime(this.settings.master,now,.025);
+      if(!this.hornWave){const real=new Float32Array(9),imag=new Float32Array([0,1,.64,.38,.24,.15,.1,.06,.035]);this.hornWave=c.createPeriodicWave(real,imag);}
+      const sources:AudioScheduledSourceNode[]=[],nodes:AudioNode[]=[volume,filter,air];
+      const vibrato=c.createOscillator(),depth=c.createGain();vibrato.frequency.value=4.6;depth.gain.value=.6;vibrato.connect(depth);sources.push(vibrato);nodes.push(depth);
+      for(const [frequency,detune] of [[147,-3],[196,3]]){
+        const oscillator=c.createOscillator();oscillator.setPeriodicWave(this.hornWave);oscillator.frequency.setValueAtTime(frequency*.985,now);oscillator.frequency.exponentialRampToValueAtTime(frequency,now+.18);oscillator.detune.value=detune;
+        depth.connect(oscillator.frequency);oscillator.connect(volume);sources.push(oscillator);
+      }
+      if(this.noiseBuffer){const breath=c.createBufferSource();breath.buffer=this.noiseBuffer;breath.loop=true;air.gain.value=.06;breath.connect(air);air.connect(volume);sources.push(breath);}
+      this.hornVoice={gain:volume,sources,nodes};
+      for(const source of sources){source.start(now);source.stop(now+8.3);}
+      this.hornTimer=setTimeout(()=>this.stopHorn(),8000);return true;
+    }catch{this.stopHorn(true);return false;}
+  }
+  stopHorn(immediate=false):void {
+    clearTimeout(this.hornTimer);const voice=this.hornVoice,c=this.context;if(!voice||!c)return;this.hornVoice=undefined;
+    const release=immediate?0:.22,now=c.currentTime;
+    voice.gain.gain.cancelScheduledValues(now);voice.gain.gain.setValueAtTime(immediate?0:voice.gain.gain.value,now);voice.gain.gain.linearRampToValueAtTime(0,now+release);
+    const cleanup=()=>{for(const node of [...voice.sources,...voice.nodes])node.disconnect();};
+    if(immediate)cleanup();else voice.sources[0].onended=cleanup;
+    for(const source of voice.sources){try{source.stop(now+release+.01);}catch{/* Already stopped. */}}
   }
   frenchVoice():SpeechSynthesisVoice|undefined {
     try{
@@ -100,5 +138,5 @@ export class MaritimeAudio {
     clearTimeout(this.voiceTimer);
     if(this.speech){this.speech.onend=this.speech.onerror=this.speech.onstart=null;try{if(typeof speechSynthesis!=='undefined')speechSynthesis.cancel();}catch{/* Text is always available. */}this.speech=undefined;this.voiceStatus='Lecture arrêtée.';}
   }
-  dispose():void {this.disposed=true;this.stopSpeech();for(const source of this.sources){try{source.stop();source.disconnect();}catch{/* Already stopped. */}}void this.context?.close().catch(()=>{});}
+  dispose():void {this.disposed=true;this.stopHorn(true);this.stopSpeech();for(const source of this.sources){try{source.stop();source.disconnect();}catch{/* Already stopped. */}}void this.context?.close().catch(()=>{});}
 }

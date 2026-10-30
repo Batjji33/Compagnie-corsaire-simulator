@@ -83,6 +83,8 @@ footer p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
 .rudder-scale { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); }
 .helm-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
 .helm-actions button { padding:0 12px; font-size:13px; }
+#fog-horn { touch-action:none;user-select:none;-webkit-user-select:none; }
+#fog-horn[aria-pressed=true] { background:var(--accent);color:var(--surface); }
 .helm-help { margin-left:auto; font-size:12px; color:var(--muted); }
 .helm-help summary { cursor:pointer; min-height:44px; display:flex; align-items:center; padding:0 12px; border:1px solid var(--line); border-radius:4px; background:var(--raised); }
 .helm-help[open] p { position:fixed; z-index:5; right:16px; bottom:60px; width:min(400px,calc(100% - 32px)); background:var(--raised); padding:16px; line-height:1.6; border:1px solid var(--line); }
