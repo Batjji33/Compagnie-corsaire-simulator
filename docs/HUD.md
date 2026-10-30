@@ -8,6 +8,7 @@ La scène Three.js occupe tout le viewport, sans bandeau réservé au-dessus ou 
 - À gauche : sélection des points de vue, radar repliable et commandes indépendantes des deux moteurs.
 - À droite : vues extérieur / passerelle, zoom et recentrage, barre avec cadran et corne de brume.
 - Au bord inférieur central en paysage : consigne de mission, action de départ ou d’accostage et journal de bord repliable. Le commentaire touristique se place juste au-dessus, dans le même groupe, pour dégager le navire et éviter tout chevauchement entre les deux modules.
+- En service continu : compteur des créneaux de 6 minutes, heure HH:mm juste dessous et état du service. Le bouton discret « Passer l’attente » apparaît uniquement après les transferts au quai. Le journal regroupe les horaires et les compteurs détaillés de navigation, d’escale et de retard pour garder la vue dégagée.
 - Au bord inférieur : état de la traversée et des passagers, aide, excursion, son et pause. Les annonces touristiques se lisent dans un module repliable.
 
 Les instruments détaillés sont fermés au premier lancement. Le radar s’affiche par défaut à partir de 700 px de hauteur et de largeur ; il se replie à l’entrée dans un format compact et reste accessible par son bouton. Les panneaux restent déplaçables au doigt et au clavier ; leurs positions sont bornées à la scène et le bouton de remise en place concerne aussi la carte.
@@ -39,3 +40,17 @@ Direction de design : **Data terminal**, graine **173972**, adaptée au HUD de j
 - Inspection de design en navigateur : aucun échec dans les règles applicables aux interfaces applicatives. Deux réserves automatiques interprétées : les bordures translucides sont mesurées sans leur alpha ; la gamme de tailles comprend les textes de carte en coordonnées SVG et les chiffres des instruments.
 
 Les scripts et captures de contrôle locaux se trouvent dans `.qa/hud-*` (répertoire ignoré par Git). La validation dans Safari sur un iPad physique reste à effectuer : l’émulation Chrome ne mesure ni les performances du GPU de l’iPad ni les particularités WebKit.
+
+## Validation des horaires — 30 octobre 2026
+
+87 tests passent, dont les scénarios d’avance, ponctualité, retard, escale prolongée,
+saut temporel et rotations successives. Le build TypeScript/Vite réussit, avec
+l’avertissement de poids du bundle principal (environ 791 ko).
+
+Le contrôle Chromium `.qa/timetable-check.mjs` valide les transferts, la reprise
+IndexedDB pendant l’escale, la synchronisation après saut, l’immobilité du navire,
+le départ manuel, le retard croissant et la comptabilité sans doublon. Aux formats
+1 440 × 900, 1 024 × 768, 768 × 1 024, 844 × 390 et 390 × 844, aucun bouton n’est
+masqué, aucun débordement horizontal n’apparaît et l’heure est placée sous le compteur.
+L’inspection du HUD actif aux trois largeurs du skill donne zéro échec ; sa réserve
+sur les bordures concerne les couleurs translucides existantes mesurées sans alpha.

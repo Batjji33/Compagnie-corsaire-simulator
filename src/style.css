@@ -183,10 +183,10 @@ kbd { font: inherit; color: var(--muted); margin-left: auto; }
 #objective-guidance { color: var(--accent); line-height: 1.5; font-variant-numeric: tabular-nums; margin: 6px 0 8px; }
 .objective-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .objective-actions button { min-height: 44px; padding: 0 10px; font-size: 12px; }
-#mission-details { background: transparent; border-color: var(--edge); }
+#mission-details, #mission-skip { background: transparent; border-color: var(--edge); }
 #mission-action { border-color: var(--accent); }
 #objective-details { max-height: min(220px, 30dvh); overflow: auto; margin-top: 10px; border-top: 1px solid var(--edge); padding-top: 10px; }
-#objective-comment { line-height: 1.6; color: var(--muted); }
+#objective-comment, #objective-schedule { line-height: 1.6; color: var(--muted); }
 #objective-steps { padding-left: 20px; margin: 10px 0 0; columns: 2; color: var(--muted); line-height: 1.8; }
 #objective-steps [aria-current] { color: var(--accent); }
 #service-end { margin-top: 12px; min-height: 44px; font-size: 12px; background: transparent; }

@@ -73,6 +73,11 @@ export function validRun(v:unknown):v is SavedRun {
   if(a.passengers&&(!finite(a.passengers.satisfaction,0,100)||!finite(a.passengers.discomfort,0,1e9)))return false;
   if(a.tourVisited&&(!Array.isArray(a.tourVisited)||a.tourVisited.length>50||!a.tourVisited.every(id=>typeof id==='string'&&id.length<=100)))return false;
   if(a.service!==undefined&&(!validService(a.service)||a.missionId!=='malo-dinard'||a.service.elapsed+1e-6<s.elapsed||a.service.approachContacts>s.metrics.contacts))return false;
+  if(a.service?.timing){
+    const t=a.service.timing;
+    if((s.phase==='unloading')!==(t.arrivedAt!==null))return false;
+    if(t.arrivedAt!==null&&Math.abs(a.service.elapsed-t.arrivedAt-s.phaseTime)>Math.max(1e-6,a.service.elapsed*1e-10))return false;
+  }
   for(const key of ['x','z','heading','surge','sway','yawRate','port','starboard','rudder'] as const)if(!finite(a.vessel[key],-1e6,1e6))return false;
   return ['port','starboard','rudder'].every(k=>finite(a.command[k as keyof HelmCommand],-1,1));
 }

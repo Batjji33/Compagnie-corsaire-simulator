@@ -18,26 +18,27 @@ function arrive(service:FerryService,satisfaction=100){
   const d=service.mission.definition;
   if(service.mission.phase==='preparation')service.mission.board();
   advance(service,d.boardingSeconds,sample(d.origin.berth));assert.equal(service.mission.phase,'departure');
-  service.mission.release();advance(service,1,sample({...d.origin.berth,x:d.origin.berth.x+100}));assert.equal(service.mission.phase,'crossing');
+  assert.ok(service.release());advance(service,1,sample({...d.origin.berth,x:d.origin.berth.x+100}));assert.equal(service.mission.phase,'crossing');
   advance(service,1,sample(d.destination.approach));assert.equal(service.mission.phase,'approach');
   advance(service,1,sample(d.destination.berth));assert.equal(service.mission.phase,'docking');
   const atBerth=sample({...d.destination.berth,speed:1.5*KNOT});
   const before=structuredClone(atBerth);assert.ok(service.dock(atBerth));assert.deepEqual(atBerth,before);assert.equal(service.mission.phase,'unloading');
   assert.equal(advance(service,d.unloadingSeconds-.1,atBerth,satisfaction),undefined);
-  return {result:advance(service,.2,atBerth,satisfaction)!,pose:atBerth};
+  advance(service,.2,atBerth,satisfaction);assert.equal(service.mission.phase,'unloading');
+  return {result:advance(service,service.waitRemaining,atBerth,satisfaction)!,pose:atBerth};
 }
 
 test('two-way rotations run without a terminal result, and departure remains manual after boarding',()=>{
   const service=new FerryService();
   const first=arrive(service,80);assert.ok(first.result.completed);assert.equal(service.state.completed,1);assert.equal(service.state.transported,180);
-  assert.equal(service.mission.phase,'boarding');assert.equal(service.originPort,'dinard');assert.equal(service.destinationPort,'malo');
+  assert.equal(service.mission.phase,'departure');assert.equal(service.originPort,'dinard');assert.equal(service.destinationPort,'malo');
   assert.deepEqual(service.mission.definition.origin.berth,MALO_DINARD.destination.berth);
   assert.equal(service.mission.definition.passengers,servicePassengers(1));assert.equal(service.mission.finished,false);assert.equal(service.result,undefined);
   advance(service,18,sample(first.pose));assert.equal(service.mission.phase,'departure');
   advance(service,3600,sample(first.pose));assert.equal(service.mission.phase,'departure');assert.equal(service.mission.moored,true);assert.equal(service.mission.state.released,false);
-  service.mission.release();advance(service,1,sample({...first.pose,z:first.pose.z+100}));
+  service.release();advance(service,1,sample({...first.pose,z:first.pose.z+100}));
   const d=service.mission.definition;advance(service,1,sample(d.destination.approach));advance(service,1,sample(d.destination.berth));assert.ok(service.dock(sample(d.destination.berth)));
-  advance(service,12,sample(d.destination.berth),100);assert.equal(service.state.completed,2);assert.equal(service.destinationPort,'dinard');assert.equal(service.mission.phase,'boarding');
+  advance(service,service.waitRemaining,sample(d.destination.berth),100);assert.equal(service.state.completed,2);assert.equal(service.destinationPort,'dinard');assert.equal(service.mission.phase,'departure');
   assert.equal(service.state.transported,180+servicePassengers(1));assert.equal(service.result,undefined);
 });
 
@@ -76,7 +77,7 @@ test('return-leg save/reload preserves destination, loading, elapsed time and st
   const service=new FerryService();arrive(service,85);advance(service,7,sample(service.mission.definition.origin.berth),95);
   const ship=new VesselDynamics(service.mission.definition.origin.berth),state=structuredClone(service.state),leg=structuredClone(service.mission.state);
   const save={missionId:'malo-dinard',mission:leg,vessel:ship.state,command:ship.command,marine:readMarine({}),damage:0,service:state};assert.ok(validRun(save));
-  const restored=new FerryService(state,leg);assert.equal(restored.destinationPort,'malo');assert.equal(restored.mission.phase,'boarding');assert.equal(restored.mission.state.phaseTime,7);assert.deepEqual(restored.state,state);
+  const restored=new FerryService(state,leg);assert.equal(restored.destinationPort,'malo');assert.equal(restored.mission.phase,'departure');assert.equal(restored.mission.state.phaseTime,7);assert.deepEqual(restored.state,state);
   advance(service,1,sample(ship.state),95);advance(restored,1,sample(ship.state),95);assert.deepEqual(restored.state,service.state);assert.deepEqual(restored.mission.state,service.mission.state);
   restored.state.transported++;assert.notEqual(restored.state.transported,state.transported);
   const invalid=[{completed:-1},{completed:1.5},{transported:9999},{elapsed:NaN},{satisfactionTotal:Infinity},{currentDockQuality:120},{accountedSeconds:1e20},{approachContacts:10}];
