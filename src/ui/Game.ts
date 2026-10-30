@@ -75,6 +75,7 @@ export class Game {
     document.addEventListener('visibilitychange',()=>{if(document.hidden&&this.started&&!this.paused){this.show('home');}},options);
     window.addEventListener('pagehide',()=>this.snapshot(),options);
     this.immersion=new Immersion(world,store,()=>this.show('excursions'));
+    this.settingsPanel.addEventListener('hull-repaired',()=>{this.immersion.audio.repair(this.world.vessel.marine.sound);this.snapshot();},options);
     this.world.scene.add(this.markers.root);
     this.applyMarine(this.store.data.marine);
     this.marinePanel.restoreLayout(this.store.data.instruments);
@@ -322,7 +323,7 @@ export class Game {
   }
   private lockMissionSettings():void {
     const locked=this.mode==='mission'&&!!this.mission&&!this.mission.finished;
-    this.settingsPanel.querySelectorAll<HTMLInputElement|HTMLButtonElement>('#sea-state,#wind-direction,#marine-hour,#tide-phase,[data-marine]:not([data-marine="sound"]),#repair-hull').forEach(el=>{el.disabled=locked;});
+    this.settingsPanel.querySelectorAll<HTMLInputElement|HTMLButtonElement>('#sea-state,#wind-direction,#marine-hour,#tide-phase,[data-marine]:not([data-marine="sound"])').forEach(el=>{el.disabled=locked;});
   }
   private snapshot():void {
     const m=this.mission,v=this.world.vessel;

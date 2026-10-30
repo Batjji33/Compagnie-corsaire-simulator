@@ -11,6 +11,7 @@ export class MarinePanel {
   private abort=new AbortController();
   private panels:HTMLElement[]=[];
   private timer=0;
+  private repairTimer:ReturnType<typeof setTimeout>|undefined;
   private alert:HTMLElement;
   private range=500;
   private compact=matchMedia('(max-height:700px), (max-width:600px)').matches;
@@ -24,7 +25,7 @@ export class MarinePanel {
       <label for="marine-hour">Heure simulée</label><input id="marine-hour" type="range" min="0" max="23.9" step=".1" value="14">
       <label for="tide-phase">Phase de marée (0–360°)</label><input id="tide-phase" type="range" min="0" max="360" value="0">
       ${[['evolving','Météo évolutive'],['dayCycle','Cycle jour / nuit · 24 min'],['tideCycle','Marée · cycle de 12 min'],['damageEnabled','Dégâts et perte de puissance'],['sound','Alertes sonores']].map(([key,label])=>`<label class="check"><input type="checkbox" data-marine="${key}" checked>${label}</label>`).join('')}
-      <button id="repair-hull">Réparer le navire</button><h2>Instruments</h2>
+      <button id="repair-hull">Réparer le navire</button><p id="repair-status" role="status" aria-live="polite"></p><h2>Instruments</h2>
       <p>Glissez les poignées pour déplacer les panneaux. Au clavier : flèches sur la poignée.</p>
       <div id="instrument-switches"></div><button id="reset-instruments">Replacer les instruments</button>`);
     settings.querySelector<HTMLSelectElement>('#sea-state')!.addEventListener('change',e=>{const value=(e.target as HTMLSelectElement).value;if(value in SEA)m.sea=value as SeaState;},options);
@@ -34,7 +35,15 @@ export class MarinePanel {
     settings.querySelectorAll<HTMLInputElement>('[data-marine]').forEach(input=>input.addEventListener('change',()=>{
       const key=input.dataset.marine as 'evolving'|'dayCycle'|'tideCycle'|'damageEnabled'|'sound';m[key]=input.checked;
     },options));
-    settings.querySelector('#repair-hull')!.addEventListener('click',()=>{m.damage=0;},options);
+    const repair=settings.querySelector<HTMLButtonElement>('#repair-hull')!,repairStatus=settings.querySelector<HTMLElement>('#repair-status')!;
+    repair.addEventListener('click',()=>{
+      m.damage=0;this.refresh();repair.disabled=true;repair.classList.add('repair-complete');
+      repair.textContent='✓ Navire réparé';repairStatus.textContent='Coque et puissance restaurées à 100 %.';
+      settings.dispatchEvent(new Event('hull-repaired'));
+      clearTimeout(this.repairTimer);this.repairTimer=setTimeout(()=>{
+        repair.disabled=false;repair.classList.remove('repair-complete');repair.textContent='Réparer le navire';repairStatus.textContent='';
+      },1800);
+    },options);
     const viewport=document.querySelector<HTMLElement>('.viewport')!;
     this.alert=document.createElement('div');this.alert.className='marine-alert';this.alert.setAttribute('role','status');viewport.append(this.alert);
     this.addPanel('navigation','Navigation',`<div class="marine-readings"><div>Compas / cap<strong id="nav-heading"></strong></div><div>Vitesse fond<strong id="nav-speed"></strong></div><div>Sondeur<strong id="nav-depth"></strong></div><div>Sous la quille<strong id="nav-clearance"></strong></div></div><p id="nav-condition"></p><p id="nav-tide"></p><p id="nav-hull"></p><p id="nav-position"></p><small>Simulation fictive · carte GPS via « Carte »</small>`,false);
@@ -135,5 +144,5 @@ export class MarinePanel {
     document.getElementById('radar-ship')!.setAttribute('transform',`rotate(${reading.heading})`);
     document.getElementById('radar-heading-line')!.setAttribute('transform',`rotate(${reading.heading})`);
   }
-  dispose():void {this.abort.abort();for(const panel of this.panels)panel.remove();this.alert.remove();document.querySelector('.instrument-quick')?.remove();document.getElementById('radar-toggle')?.remove();}
+  dispose():void {clearTimeout(this.repairTimer);this.abort.abort();for(const panel of this.panels)panel.remove();this.alert.remove();document.querySelector('.instrument-quick')?.remove();document.getElementById('radar-toggle')?.remove();}
 }

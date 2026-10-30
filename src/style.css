@@ -156,6 +156,10 @@ kbd { font: inherit; color: var(--muted); margin-left: auto; }
 #settings label:not(.check) { display: block; margin-top: 16px; }
 #settings input[type=range] { display: block; width: 100%; height: 44px; accent-color: var(--accent); }
 #repair-hull, #reset-instruments { width: 100%; margin-top: 12px; }
+#repair-hull.repair-complete { color: #c7f6e5; border-color: var(--accent); opacity: 1; animation: repair-confirmation .7s ease-out; }
+#repair-status:empty { display: none; }
+@keyframes repair-confirmation { 0% { box-shadow: 0 0 0 0 #90d8c288; } 100% { box-shadow: 0 0 0 12px #90d8c200; } }
+@media (prefers-reduced-motion: reduce) { #repair-hull.repair-complete { animation: none; } }
 #bay-map { top: calc(var(--top) + 72px); right: var(--right); width: 330px; max-width: calc(100% - 32px); max-height: calc(100% - 110px); }
 #bay-map .panel-title { margin-bottom: 4px; }
 .map-handle { width: 100%; font-size: 11px; color: var(--muted); }

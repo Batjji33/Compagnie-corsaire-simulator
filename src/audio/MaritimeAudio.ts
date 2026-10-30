@@ -30,6 +30,7 @@ export class MaritimeAudio {
   private hornWave:PeriodicWave|undefined;
   private hornVoice:{gain:GainNode;sources:AudioScheduledSourceNode[];nodes:AudioNode[]}|undefined;
   private hornTimer:ReturnType<typeof setTimeout>|undefined;
+  private repairVoice:{gain:GainNode;tones:OscillatorNode[]}|undefined;
   get hornActive():boolean {return !!this.hornVoice;}
   unlock():void {
     if(this.disposed||!this.settings.enabled)return;
@@ -54,6 +55,7 @@ export class MaritimeAudio {
   }
   apply(settings:AudioSettings):void {
     this.settings=readAudio(settings);
+    if(!this.settings.enabled||this.settings.master===0||this.settings.alerts===0)this.stopRepair();
     if(!this.settings.enabled||this.settings.master===0||this.settings.horn===0)this.stopHorn(true);
     else if(this.hornVoice&&this.context)this.hornVoice.gain.gain.setTargetAtTime(this.settings.horn*.16,this.context.currentTime,.04);
     if(!this.settings.enabled||this.settings.master===0||this.settings.voice===0)this.stopSpeech();
@@ -79,6 +81,31 @@ export class MaritimeAudio {
     if(!this.settings.enabled||this.paused)return;
     if(this.settings.alerts>0)this.stopSpeech();
     this.tone(130,130,.45,this.settings.alerts*.07);this.tone(165,165,.45,this.settings.alerts*.045);
+  }
+  /** Brief metallic taps, including in the paused settings dialog after a touch. */
+  repair(sound=true):void {
+    if(this.disposed||!sound||!this.settings.enabled||this.settings.master===0||this.settings.alerts===0)return;
+    this.unlock();const c=this.context;if(!c||c.state==='closed')return;
+    this.stopRepair();
+    try{
+      const gain=c.createGain(),tones:OscillatorNode[]=[];
+      gain.gain.value=this.settings.master*this.settings.alerts*.08;gain.connect(c.destination);
+      this.repairVoice={gain,tones};
+      // A separate short envelope keeps the paused engine and sea buses silent.
+      const now=c.currentTime;
+      for(const [i,frequency] of [740,990,1320].entries()){
+        const tone=c.createOscillator(),start=now+i*.16;tone.type='sine';tone.frequency.value=frequency;
+        gain.gain.setValueAtTime(this.settings.master*this.settings.alerts*.08,start);
+        gain.gain.exponentialRampToValueAtTime(.0001,start+.14);
+        tone.connect(gain);tones.push(tone);tone.start(start);tone.stop(start+.14);
+      }
+      tones[2].onended=()=>{if(this.repairVoice?.gain===gain){this.stopRepair();if(this.paused&&c.state==='running')void c.suspend().catch(()=>{});}};
+      if(c.state==='suspended')void c.resume().catch(()=>this.stopRepair());
+    }catch{this.stopRepair();}
+  }
+  private stopRepair():void {
+    const voice=this.repairVoice;if(!voice)return;this.repairVoice=undefined;
+    voice.gain.disconnect();for(const tone of voice.tones){tone.onended=null;try{tone.stop();tone.disconnect();}catch{/* Already stopped. */}}
   }
   /** Called synchronously from the gesture: Safari can resume its context before scheduling notes. */
   startHorn():boolean {
@@ -138,5 +165,5 @@ export class MaritimeAudio {
     clearTimeout(this.voiceTimer);
     if(this.speech){this.speech.onend=this.speech.onerror=this.speech.onstart=null;try{if(typeof speechSynthesis!=='undefined')speechSynthesis.cancel();}catch{/* Text is always available. */}this.speech=undefined;this.voiceStatus='Lecture arrêtée.';}
   }
-  dispose():void {this.disposed=true;this.stopHorn(true);this.stopSpeech();for(const source of this.sources){try{source.stop();source.disconnect();}catch{/* Already stopped. */}}void this.context?.close().catch(()=>{});}
+  dispose():void {this.disposed=true;this.stopRepair();this.stopHorn(true);this.stopSpeech();for(const source of this.sources){try{source.stop();source.disconnect();}catch{/* Already stopped. */}}void this.context?.close().catch(()=>{});}
 }
