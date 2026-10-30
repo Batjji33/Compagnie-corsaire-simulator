@@ -86,7 +86,7 @@ export class Immersion {
     window.addEventListener('blur',stopHorn,options);
     this.status.id='passenger-status';this.status.setAttribute('aria-live','off');summary.append(this.status);
     this.notice.className='tour-notice';this.notice.hidden=true;this.notice.innerHTML=`<summary>${icon('tour')}<span id="tour-notice-title" aria-live="polite">Annonce touristique</span><span class="tour-read">Lire</span></summary>`;
-    this.caption.id='tour-caption';this.notice.append(this.caption);footer.append(this.notice);
+    this.caption.id='tour-caption';this.notice.append(this.caption);document.querySelector('.voyage-overlays')!.prepend(this.notice);
     document.getElementById('app')!.classList.add('immersion-ready');
     window.addEventListener('pointerdown',()=>this.audio.unlock(),options);window.addEventListener('keydown',()=>this.audio.unlock(),options);
     document.addEventListener('visibilitychange',()=>{if(document.hidden)this.audio.setPaused(true);},options);

@@ -28,6 +28,7 @@ export class Interface {
         <canvas tabindex="0" aria-label="Vue de la mer. Glissez pour orienter la caméra, pincez pour zoomer." aria-describedby="camera-help"></canvas>
         <div class="scene-caption"><label class="sr-only" for="view-select">Caméra et exploration</label><select id="view-select"><option value="">À bord du Corsaire</option>${Object.entries(VIEWS).map(([id,view])=>`<option value="${id}">${view.label}</option>`).join('')}</select></div>
         ${bayMapMarkup()}
+        <div class="voyage-overlays"></div>
         <output id="fps" hidden aria-label="Images par seconde">Mesure…</output>
         <aside id="settings" hidden aria-label="Réglages graphiques">
           <div class="panel-title"><h2>Réglages</h2><button id="settings-close" aria-label="Fermer les réglages">${icon('close')}</button></div>

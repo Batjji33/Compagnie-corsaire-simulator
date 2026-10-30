@@ -44,7 +44,7 @@ export class Game {
     this.menuButton.addEventListener('click',()=>this.show('home'),options);
     this.hud.id='mission-hud';this.hud.hidden=true;this.hud.setAttribute('aria-label','Objectif de mission');
     this.hud.innerHTML='<div class="objective-top"><strong id="objective-phase"></strong><span id="objective-time"></span></div><p id="objective-guidance"></p><div class="objective-actions"><button id="mission-action"></button><button id="mission-details" aria-expanded="false" aria-controls="objective-details">Journal de bord</button></div><div id="objective-details" hidden><p id="objective-comment"></p><ol id="objective-steps"></ol></div>';
-    document.querySelector('.viewport')!.append(this.hud);
+    document.querySelector('.voyage-overlays')!.append(this.hud);
     this.hud.querySelector('#mission-action')!.addEventListener('click',()=>this.action(),options);
     this.hud.querySelector('#mission-details')!.addEventListener('click',()=>{const details=this.hud.querySelector<HTMLElement>('#objective-details')!;details.hidden=!details.hidden;this.hud.querySelector('#mission-details')!.setAttribute('aria-expanded',String(!details.hidden));},options);
     this.hud.addEventListener('keydown',e=>{if(e.key==='Escape'){this.hud.querySelector<HTMLElement>('#objective-details')!.hidden=true;this.hud.querySelector('#mission-details')!.setAttribute('aria-expanded','false');}},options);

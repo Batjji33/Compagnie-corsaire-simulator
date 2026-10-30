@@ -7,7 +7,7 @@ La scène Three.js occupe tout le viewport, sans bandeau réservé au-dessus ou 
 - En haut : identité du jeu, vitesse fond, cap avec ruban de compas, hauteur sous quille et outils Carte / Radar / Instruments / Réglages / Menu.
 - À gauche : sélection des points de vue, radar repliable et commandes indépendantes des deux moteurs.
 - À droite : vues extérieur / passerelle, zoom et recentrage, barre avec cadran et corne de brume.
-- Au centre bas : consigne de mission, action de départ ou d’accostage et journal de bord repliable.
+- Au bord inférieur central en paysage : consigne de mission, action de départ ou d’accostage et journal de bord repliable. Le commentaire touristique se place juste au-dessus, dans le même groupe, pour dégager le navire et éviter tout chevauchement entre les deux modules.
 - Au bord inférieur : état de la traversée et des passagers, aide, excursion, son et pause. Les annonces touristiques se lisent dans un module repliable.
 
 Les instruments détaillés sont fermés au premier lancement. Le radar s’affiche par défaut à partir de 700 px de hauteur et de largeur ; il se replie à l’entrée dans un format compact et reste accessible par son bouton. Les panneaux restent déplaçables au doigt et au clavier ; leurs positions sont bornées à la scène et le bouton de remise en place concerne aussi la carte.

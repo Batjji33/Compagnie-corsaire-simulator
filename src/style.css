@@ -8,6 +8,7 @@
   --right: max(20px, env(safe-area-inset-right));
   --top: max(18px, env(safe-area-inset-top));
   --bottom: max(18px, env(safe-area-inset-bottom));
+  --voyage-width: min(390px, calc(100vw - 460px));
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
@@ -168,8 +169,9 @@ kbd { font: inherit; color: var(--muted); margin-left: auto; }
 #bay-map p { font-size: 12px; line-height: 1.5; color: var(--muted); margin: 10px 0 0; }
 #fps { position: absolute; right: calc(var(--right) + 62px); top: 37%; z-index: 4; padding: 8px; background: var(--hud); border-radius: 8px; font-size: 12px; font-variant-numeric: tabular-nums; }
 
-/* A route instruction stays visible; the journal opens only on request. */
-#mission-hud { position: absolute; z-index: 4; bottom: calc(var(--bottom) + 70px); left: 50%; transform: translateX(-50%); width: min(390px, calc(100% - 490px)); padding: 12px 14px; background: var(--hud); border: 1px solid var(--edge); border-radius: 14px; font-size: 12px; }
+/* Both modules share the lower edge; expanded content grows upward without overlap. */
+.voyage-overlays { position: absolute; z-index: 4; bottom: var(--bottom); left: 50%; transform: translateX(-50%); width: var(--voyage-width); display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+#mission-hud { width: 100%; padding: 12px 14px; background: var(--hud); border: 1px solid var(--edge); border-radius: 14px; font-size: 12px; pointer-events: auto; }
 .objective-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .objective-top strong { font-size: 14px; font-weight: 550; }
 #objective-time { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -185,17 +187,16 @@ kbd { font: inherit; color: var(--muted); margin-left: auto; }
 
 /* The old full-width footer becomes two small floating groups. */
 footer { z-index: 4; inset: auto var(--right) var(--bottom) var(--left); display: flex; align-items: end; gap: 16px; }
-.voyage-status { width: fit-content; max-width: min(480px, calc(100% - 360px)); padding: 8px 12px; background: var(--hud); border: 1px solid var(--edge); border-radius: 12px; font-size: 11px; line-height: 1.5; }
+.voyage-status { width: fit-content; max-width: calc((100vw - var(--left) - var(--right) - var(--voyage-width)) / 2 - 16px); padding: 8px 12px; background: var(--hud); border: 1px solid var(--edge); border-radius: 12px; font-size: 11px; line-height: 1.5; }
 #state { display: block; font-size: 11px; }
 #passenger-status { display: block; color: var(--muted); font-variant-numeric: tabular-nums; }
-.tour-notice { position: absolute; pointer-events: auto; left: 50%; bottom: 68px; transform: translateX(-50%); width: min(430px, calc(100vw - 500px)); background: var(--hud); border: 1px solid var(--edge); border-radius: 12px; font-size: 12px; }
+.tour-notice { pointer-events: auto; width: 100%; background: var(--hud); border: 1px solid var(--edge); border-radius: 12px; font-size: 12px; }
 .tour-notice summary { min-height: 44px; padding: 8px 12px; display: flex; gap: 8px; align-items: center; cursor: pointer; list-style: none; }
 .tour-notice summary::-webkit-details-marker { display: none; }
 .tour-notice .icon { width: 18px; height: 18px; }
 .tour-read { color: var(--muted); margin-left: auto; font-size: 11px; }
 #tour-caption { padding: 0 12px 12px; color: #f4f6f5; font-size: 12px; line-height: 1.6; max-height: 130px; overflow: auto; }
 #tour-caption:empty { display: none; }
-.mission-active .tour-notice { bottom: 230px; }
 .footer-tools { display: flex; align-items: center; gap: 6px; margin-left: auto; pointer-events: auto; }
 .footer-tools button, .helm-help summary { min-height: 46px; background: var(--hud); border-color: var(--edge); font-size: 12px; padding: 0 12px; }
 .helm-help summary { display: flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--edge); border-radius: 10px; cursor: pointer; list-style: none; }
@@ -255,6 +256,10 @@ footer { z-index: 4; inset: auto var(--right) var(--bottom) var(--left); display
 #tour-source { color: var(--accent); font-size: 13px; }
 #voice-status, #tour-editor-status { min-height: 20px; }
 
+@media (max-width: 1279px) {
+  .footer-tools button span, .helm-help summary span { display: none; }
+  .footer-tools button, .helm-help summary { width: 48px; padding: 0; }
+}
 @media (max-width: 1100px) {
   :root { --left: max(16px, env(safe-area-inset-left)); --right: max(16px, env(safe-area-inset-right)); --top: max(14px, env(safe-area-inset-top)); --bottom: max(14px, env(safe-area-inset-bottom)); }
   h1 { font-size: 14px; } h1 span { display: block; font-size: 11px; line-height: 14px; }
@@ -265,8 +270,6 @@ footer { z-index: 4; inset: auto var(--right) var(--bottom) var(--left); display
   .helm-engines { width: 180px; }
   .rudder-control { width: 210px; }
   .footer-tools button, .helm-help summary { padding: 0 10px; }
-  #mission-hud { width: calc(100% - 444px); max-width: 380px; }
-  .tour-notice { width: min(430px, calc(100vw - 440px)); }
 }
 @media (max-width: 850px) {
   .identity { padding: 8px; gap: 6px; } .identity svg { width: 22px; } h1 { font-size: 12px; }
@@ -275,10 +278,9 @@ footer { z-index: 4; inset: auto var(--right) var(--bottom) var(--left); display
   .header-actions { gap: 4px; } .header-actions button { width: 44px; min-height: 52px; height: 52px; font-size: 11px; }
   .scene-caption { width: 180px; }
   .ship-cameras button { padding: 0 10px; }
-  .voyage-status { max-width: calc(100% - 268px); }
   .footer-tools button span, .helm-help summary span { display: none; }
   .footer-tools button, .helm-help summary { width: 48px; padding: 0; }
-  #mission-hud { width: calc(100% - 412px); font-size: 11px; padding: 10px; }
+  #mission-hud { font-size: 11px; padding: 10px; }
   .objective-top { flex-wrap: wrap; gap: 2px; }
 }
 @media (max-height: 700px) and (orientation: landscape) {
@@ -295,9 +297,7 @@ footer { z-index: 4; inset: auto var(--right) var(--bottom) var(--left); display
   #marine-radar { top: calc(var(--top) + 84px); left: calc(var(--left) + 200px); }
   .camera-controls { bottom: calc(var(--bottom) + 306px); gap: 6px; }
   .camera-controls button { width: 44px; height: 44px; min-height: 44px; }
-  .tour-notice { bottom: 60px; }
   #tour-caption { max-height: 90px; }
-  .mission-active .tour-notice { bottom: 210px; }
   .marine-alert { top: calc(var(--top) + 108px); }
 }
 @media (max-height: 500px) and (orientation: landscape) {
@@ -315,7 +315,7 @@ footer { z-index: 4; inset: auto var(--right) var(--bottom) var(--left); display
   .rudder-gauge { height: 32px; } .steering-buttons button { min-height: 48px; }
   #rudder-demand { margin: 5px 0; } #fog-horn { min-height: 44px; }
   .control-heading { margin-bottom: 2px; }
-  #mission-hud { bottom: calc(var(--bottom) + 58px); width: calc(100% - 414px); padding: 8px; }
+  #mission-hud { padding: 8px; }
   #objective-guidance { margin: 4px 0; } #objective-details { max-height: 100px; }
   #marine-radar { width: 170px; top: calc(var(--top) + 58px); max-height: calc(100% - 126px); }
   .camera-controls { top: calc(var(--top) + 62px); right: calc(var(--right) + 164px); bottom: auto; flex-direction: row; }
@@ -345,9 +345,10 @@ footer { z-index: 4; inset: auto var(--right) var(--bottom) var(--left); display
   .voyage-status { max-width: 100%; width: 100%; padding: 5px 10px; min-height: 42px; }
   .footer-tools { margin: 0; gap: 8px; }
   .footer-tools button, .helm-help summary { width: 48px; }
-  .tour-notice { position: fixed; bottom: calc(var(--bottom) + 420px); width: calc(100vw - 32px); }
+  .voyage-overlays { top: calc(var(--top) + 196px); bottom: auto; width: calc(100% - 100px); left: var(--left); transform: none; }
+  #app:not(.mission-active) .voyage-overlays { top: auto; bottom: calc(var(--bottom) + 420px); width: calc(100% - 32px); left: 50%; transform: translateX(-50%); }
   .mission-active .tour-notice { display: none; }
-  #mission-hud { top: calc(var(--top) + 196px); bottom: auto; width: calc(100% - 100px); left: var(--left); transform: none; max-height: 195px; overflow: auto; }
+  #mission-hud { max-height: 195px; overflow: auto; }
   .marine-panel, #bay-map, #settings { top: calc(var(--top) + 62px); max-height: calc(100% - 190px); }
   #marine-radar { top: calc(var(--top) + 194px); left: var(--left); width: 180px; max-height: 244px; }
   .marine-alert { top: calc(var(--top) + 186px); max-width: calc(100% - 32px); font-size: 12px; }
