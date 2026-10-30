@@ -1,3 +1,4 @@
+import type { BoatParameters } from '../ships/parameters.ts';
 import { BOAT, KNOT, clamp } from '../ships/parameters.ts';
 import type { VesselState } from '../physics/VesselDynamics.ts';
 import { Berths, TAXI_PORTS } from './Berths.ts';
@@ -24,6 +25,7 @@ const angle=(r:number)=>Math.atan2(Math.sin(r),Math.cos(r));
 
 /** Uses the existing traffic agents: no extra render loop, collision list or hidden fleet. */
 export class WaterTaxis {
+  playerBoat:BoatParameters=BOAT;
   readonly berths=new Berths();
   horn:TaxiHorn|undefined;
   private elapsed=0;
@@ -102,7 +104,7 @@ export class WaterTaxis {
     for(let i=-1;i<others.length;i++){
       const agent=i<0?undefined:others[i];if(agent===a||agent&&!agent.active)continue;
       const other=agent??pv;
-      const length=agent?.route.length??BOAT.length,clearance=(a.route.length+length)/2+14,d=Math.hypot(a.x-other.x,a.z-other.z);
+      const length=agent?.route.length??this.playerBoat.length,clearance=(a.route.length+length)/2+14,d=Math.hypot(a.x-other.x,a.z-other.z);
       if(d>400)continue;
       const cpa=closestApproach(a,other,25);
       if(d<clearance+35||cpa.closing&&cpa.distance<clearance){
@@ -123,7 +125,7 @@ export class WaterTaxis {
     const x=a.x+vx*dt,z=a.z+vz*dt;
     const own=this.berths.ports[s.destination],access=own.owner===a.route.id||own.reserved===a.route.id;
     const clear=others.every(b=>b===a||!b.active||Math.hypot(x-b.x,z-b.z)>(a.route.length+b.route.length)/2+5)
-      &&Math.hypot(x-player.x,z-player.z)>(a.route.length+BOAT.length)/2+5;
+      &&Math.hypot(x-player.x,z-player.z)>(a.route.length+this.playerBoat.length)/2+5;
     if(clear&&navigable(x,z,a.route.length/2,access?s.destination:undefined)){a.x=x;a.z=z;a.vx=vx;a.vz=vz;}
     else {a.speed=0;a.vx=a.vz=0;a.avoiding=true;}
   }

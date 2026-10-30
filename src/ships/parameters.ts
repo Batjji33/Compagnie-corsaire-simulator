@@ -15,6 +15,22 @@ export const BOAT = {
   contact: { stiffness: 65000, damping: 38000, friction: 4000 },
   camera: { externalDistance: 36, minDistance: 18, maxDistance: 240, cockpitHeight: 6.15, cockpitForward: 5.2 },
 } as const;
+/** Widen numeric literals so each vessel owns its calibration. BOAT remains the legacy default. */
+type Widen<T> = { -readonly [P in keyof T]: T[P] extends number ? number : Widen<T[P]> };
+export type BoatParameters = Widen<typeof BOAT> & {catamaran?:boolean;speedLimitKnots?:number};
+export const SAINT_MALO: BoatParameters = {
+  ...BOAT, catamaran:true, speedLimitKnots:12, length:24, beam:7.8, draft:1.65, passengers:245, maxSpeedKnots:12,
+  mass:62000, yawInertia:5_200_000, engineThrust:18000, engineArm:2.8,
+  engineResponse:1.5, swayLinearDrag:32000, swayQuadraticDrag:24000,
+  yawLinearDrag:1_100_000, yawQuadraticDrag:4_800_000, rudderArm:8.5,
+  camera:{externalDistance:33,minDistance:16,maxDistance:240,cockpitHeight:5.95,cockpitForward:6.2},
+};
+export const SHIPS = {
+  emeraude:{name:'Corsaire d’Émeraude',type:'Vedette',parameters:BOAT},
+  'saint-malo':{name:'Corsaire de Saint-Malo',type:'Catamaran · 2 × MAN 360 kW + 1 GE',parameters:SAINT_MALO},
+} as const;
+export type ShipId = keyof typeof SHIPS;
+export function isShipId(value:unknown):value is ShipId {return typeof value==='string'&&Object.hasOwn(SHIPS,value);}
 export function clamp(value: number, min: number, max: number): number {
   return Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : 0;
 }
