@@ -11,6 +11,10 @@ import type { ViewId } from './geography';
 import { Vessel } from '../ships/Vessel';
 import { VesselCamera } from './VesselCamera';
 import type { CameraMode } from './VesselCamera';
+import { Traffic } from '../traffic/Traffic';
+import { TrafficView } from './TrafficView';
+import { Passengers } from '../passengers/Passengers';
+import { PassengerView } from './PassengerView';
 
 export class World {
   readonly scene = new Scene();
@@ -25,6 +29,10 @@ export class World {
   private lastTarget = new Vector3();
   readonly vessel:Vessel;
   readonly vesselCamera:VesselCamera;
+  readonly traffic=new Traffic();
+  readonly passengers=new Passengers();
+  private trafficView:TrafficView;
+  private passengerView:PassengerView;
   constructor(readonly canvas: HTMLCanvasElement, quality: Quality) {
     const context = canvas.getContext('webgl2', { alpha: false, antialias: false, powerPreference: 'low-power' });
     if (!context) throw new Error('WebGL 2 est indisponible. Vérifiez les mises à jour de Safari/iPadOS ou essayez un navigateur compatible.');
@@ -57,6 +65,9 @@ export class World {
     this.controls.maxPolarAngle = Math.PI * 0.49;
     this.vessel=new Vessel();this.scene.add(this.vessel.root,this.camera);
     this.vesselCamera=new VesselCamera(this.camera,this.controls,this.vessel);
+    this.traffic.limit=quality==='low'?6:8;
+    this.trafficView=new TrafficView(this.traffic);this.scene.add(this.trafficView.root);
+    this.passengerView=new PassengerView(this.vessel,this.passengers);this.scene.add(this.passengerView.quay);
   }
   resetCamera(): void {
     this.setCameraMode('external');
@@ -82,7 +93,7 @@ export class World {
   zoom(factor: number): void {
     this.vesselCamera.zoom(factor);
   }
-  setQuality(quality: Quality): void { this.quality = quality; this.ocean.setQuality(quality); this.environment.setQuality(quality); this.resize(); }
+  setQuality(quality: Quality): void { this.quality = quality; this.traffic.limit=quality==='low'?6:8;this.ocean.setQuality(quality); this.environment.setQuality(quality); this.resize(); }
   resize(): void {
     const { width, height } = this.canvas.getBoundingClientRect();
     this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, CONFIG.quality[this.quality].pixelRatio));
@@ -90,9 +101,17 @@ export class World {
     this.camera.aspect = width / Math.max(1, height);
     this.camera.updateProjectionMatrix();
   }
-  update(dt:number):void {this.vessel.update(dt);}
+  update(dt:number):void {
+    const v=this.vessel,m=v.marine;
+    this.traffic.update(dt,v.dynamics.state,m.hour,m.waves,m.visibility);
+    v.update(dt,this.traffic.contacts(v.dynamics.state));
+    if(!m.warning&&this.traffic.risk)m.warning=`Trafic : ${this.traffic.risk.name} · croisement à surveiller`;
+  }
   render(dt: number, time: number, alpha=1): void {
     this.vessel.render(time,alpha);
+    this.trafficView.root.visible=this.traffic.enabled;
+    this.trafficView.render(this.vessel.marine.tide,time,this.camera.position);
+    this.passengerView.render(dt,time);
     const m=this.vessel.marine,light=m.daylight;
     this.daylight.sun.intensity=2.4*light;this.daylight.ambient.intensity=.65+1.05*light;
     const angle=(m.hour-6)/24*Math.PI*2;
@@ -122,7 +141,7 @@ export class World {
     this.renderer.render(this.scene, this.camera);
   }
   dispose(): void {
-    this.controls.dispose(); this.ocean.dispose(); this.environment.dispose(); this.vessel.dispose();
+    this.controls.dispose(); this.ocean.dispose(); this.environment.dispose();this.trafficView.dispose();this.passengerView.dispose(); this.vessel.dispose();
     this.sky.geometry.dispose(); this.sky.material.dispose(); this.renderer.dispose();
   }
 }

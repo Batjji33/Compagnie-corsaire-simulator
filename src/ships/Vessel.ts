@@ -4,6 +4,7 @@ import { VesselDynamics } from '../physics/VesselDynamics';
 import type { VesselState } from '../physics/VesselDynamics';
 import { CorsaireModel } from './CorsaireModel';
 import { ShoreContact } from '../physics/ShoreContact';
+import type { TrafficContact } from '../traffic/Traffic';
 
 export class Vessel {
   moored=false;
@@ -14,16 +15,17 @@ export class Vessel {
   readonly contact=new ShoreContact();
   readonly visual:VesselState={...this.dynamics.state};
   constructor(){this.root.add(this.model.root);this.root.name='Navire pilotable';}
-  update(dt:number):void {
+  update(dt:number,traffic?:TrafficContact):void {
     const m=this.marine,s=this.dynamics.state;m.update(dt);
     if(this.moored){
       this.dynamics.reset({x:s.x,z:s.z,heading:s.heading});
       m.hazards(s,'',0,dt);return;
     }
     const contact=this.contact.evaluate(s),weather=m.forces(s);
-    const grounded=m.hazards(s,this.contact.label,this.contact.impactSpeed,dt);
+    this.contact.label ||= traffic?.label??'';
+    const grounded=m.hazards(s,this.contact.label,Math.max(this.contact.impactSpeed,traffic?.impact??0),dt);
     this.dynamics.powerFactor=m.performance;
-    this.dynamics.step(dt,{x:contact.x+weather.x,z:contact.z+weather.z,yaw:contact.yaw+weather.yaw});
+    this.dynamics.step(dt,{x:contact.x+weather.x+(traffic?.x??0),z:contact.z+weather.z+(traffic?.z??0),yaw:contact.yaw+weather.yaw+(traffic?.yaw??0)});
     if(grounded){s.surge*=Math.exp(-dt*3);s.sway*=Math.exp(-dt*3);s.yawRate*=Math.exp(-dt*2);}
   }
   render(time:number,alpha:number):void {

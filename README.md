@@ -1,8 +1,15 @@
 # Compagnie Corsaire Simulator — jeu de navigation
 
-Jeu maritime web local dans une baie Saint-Malo–Dinard simplifiée : navigation libre, mission de transport de passagers, météo évolutive et instruments. Scène procédurale sans ressource distante, sans API ni service payant. Développement sur `develop`. Voir [le dossier environnement](docs/ENVIRONMENT.md) pour les sources, les choix fictifs, les budgets et les limites.
+Jeu maritime web local dans une baie Saint-Malo–Dinard simplifiée : navigation libre, mission de transport de passagers, météo évolutive, trafic autonome et excursions commentées. Scène procédurale sans ressource distante, sans API ni service payant. Développement sur `develop`. Voir [le dossier environnement](docs/ENVIRONMENT.md) pour les sources, les choix fictifs, les budgets et les limites.
 
 Le Corsaire d’Émeraude est pilotable avec deux moteurs indépendants, barre progressive, inertie, marche arrière et caméras extérieure/cockpit. Le menu propose la navigation libre et une mission complète Saint-Malo–Dinard, de l’embarquement au bilan, avec progression et paramètres dans IndexedDB. Voir [le guide du jeu](docs/GAMEPLAY.md), [les conditions maritimes](docs/MARITIME.md) et [les commandes de pilotage](docs/PILOTING.md).
+
+La phase 5 ajoute voiliers, plaisance, ferries et vedettes avec évitements et échos
+radar, une foule 3D instanciée suivant les étapes de mission, la satisfaction des
+passagers et sept commentaires français éditables. **Excursion** ouvre le panneau
+de commentaires et de volumes, **Son : non / oui** active l'ambiance procédurale.
+Le texte reste disponible sans voix française. Voir [le guide d'immersion](docs/IMMERSION.md)
+et [les crédits audio et touristiques](public/assets/AUDIO-CREDITS.md).
 
 ## Démarrer
 
@@ -69,7 +76,13 @@ Pas de post-traitement, d’ombres ni de reflet rendu dans une seconde passe. Qu
 
 ## Vérification et limites
 
-La version actuelle passe 35 tests de logique, physique, météo, objectifs, accostage et notation, ainsi que le build TypeScript/Vite. Les essais navigateur de cette phase couvrent le menu, les deux modes, les passagers, les amarres, la pause, les reprises, IndexedDB, le bilan et des événements tactiles sur écran d'iPad simulé. Voir [les règles et limites de validation](docs/GAMEPLAY.md). Le parcours initial d'exploration ci-dessous documente les vérifications des premières phases.
+La version actuelle passe 47 tests de logique, physique, météo, objectifs, accostage,
+trafic, passagers, annonces et notation, ainsi que le build TypeScript/Vite.
+Les essais navigateur couvrent les modes, le radar, les passagers, les amarres,
+pause/reprise, IndexedDB, l'édition des commentaires, le repli sans voix française
+et des événements tactiles sur écran d'iPad simulé. Voir [les règles du jeu](docs/GAMEPLAY.md)
+et [les limites de validation de la phase 5](docs/IMMERSION.md). Le parcours initial
+d'exploration ci-dessous documente les vérifications des premières phases.
 
 Build TypeScript strict + Vite et deux tests d’horloge validés. Démarrage HTTP vérifié. Inspection Chromium aux formats 1440 × 900, 1024 × 768, 390 × 844 et 667 × 375. Vérifications automatisées des profils, FPS, pause, boutons caméra, gestes glisser/pincer, préférences après rechargement, redimensionnement, perte de contexte et absence de WebGL 2 ; aucune erreur JavaScript ou shader durant le parcours normal. Les captures et le script ponctuel de contrôle sont dans `.qa/` (ignoré par Git, dépend de l’outil navigateur local). Le rendu réel sur Safari/iPad et les 30 FPS sur l’appareil cible restent à valider ; l’émulation de taille et de toucher ne remplace pas ce test.
 

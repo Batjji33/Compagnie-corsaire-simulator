@@ -30,10 +30,10 @@ async function boot():Promise<void> {
   });
   world = new World(ui.canvas, settings.quality);
   helm=new HelmControls(world.vessel.dynamics,(mode)=>{world.setCameraMode(mode);ui.setShipView();helm.refresh();},()=>world.vesselCamera.mode);
-  const marinePanel=new MarinePanel(world.vessel);
+  const marinePanel=new MarinePanel(world.vessel,world.traffic);
   loop = new SimulationLoop((dt) => {game.update(dt);}, (dt, time, alpha) => {
     world.render(dt, time, alpha);
-    marinePanel.update(dt,loop.paused);
+    marinePanel.update(dt);
     game.render(dt);
     const fps = meter.sample(performance.now());
     if (settings.showFps && fps !== null) ui.fps.textContent = `${fps} FPS`;

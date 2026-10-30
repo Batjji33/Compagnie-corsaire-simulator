@@ -9,6 +9,7 @@ import type { MissionDefinition, MissionPhase } from '../missions/definitions';
 import { GameStore, readMarine, recordResult } from '../saves/GameStore';
 import { SEA, degrees } from '../weather/Marine';
 import { MissionMarkers } from '../world/MissionMarkers';
+import { Immersion } from './Immersion';
 
 const names:Record<MissionPhase,string>={preparation:'Préparation',boarding:'Embarquement',departure:'Départ',crossing:'Traversée',approach:'Approche',docking:'Accostage',unloading:'Débarquement',complete:'Bilan',failed:'Mission interrompue'};
 const clock=(seconds:number)=>`${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
@@ -29,6 +30,7 @@ export class Game {
   private lastPhase:MissionPhase|undefined;
   private settingsPanel:HTMLElement;
   private previousFree:{x:number;z:number}|undefined;
+  private immersion:Immersion;
   constructor(private world:World,private helm:HelmControls,private ui:Interface,private marinePanel:MarinePanel,private store:GameStore,private pauseLoop:(paused:boolean)=>void){
     const options={signal:this.abort.signal};
     this.settingsPanel=document.querySelector('#settings')!;
@@ -64,6 +66,7 @@ export class Game {
     this.settingsPanel.addEventListener('change',savePreferences,options);
     document.addEventListener('visibilitychange',()=>{if(document.hidden&&this.started&&!this.paused){this.show('home');}},options);
     window.addEventListener('pagehide',()=>this.snapshot(),options);
+    this.immersion=new Immersion(world,store,()=>this.show('excursions'));
     this.world.scene.add(this.markers.root);
     this.applyMarine(this.store.data.marine);
     this.marinePanel.restoreLayout(this.store.data.instruments);
@@ -77,6 +80,7 @@ export class Game {
   private setPaused(value:boolean):void {
     this.paused=value;this.pauseLoop(value);this.helm.clearKeys();this.helm.setEnabled(!value&&!this.world.vessel.moored);
     this.ui.pause.textContent=value?'Reprendre':'Pause';this.ui.pause.setAttribute('aria-pressed',String(value));
+    this.immersion?.setPaused(value);
   }
   togglePause():void {if(!this.started){this.show('home');return;}if(this.paused)this.resume();else this.show('home');}
   private returnSettings():void {
@@ -84,17 +88,20 @@ export class Game {
   }
   private show(screen:string):void {
     this.setPaused(true);this.snapshot();this.returnSettings();
+    this.immersion.panel.remove();
     this.dialog.querySelector('#menu-content')!.innerHTML=this.markup(screen);
     if(screen==='settings'){
       this.settingsPanel.hidden=false;this.dialog.querySelector('#menu-content')!.append(this.settingsPanel);
       this.lockMissionSettings();
     }
+    if(screen==='excursions'){this.dialog.querySelector('#menu-content')!.append(this.immersion.panel);this.immersion.sync();}
     if(!this.dialog.open)this.dialog.showModal();
     this.dialog.querySelector<HTMLElement>('#game-menu-title')?.focus();this.storageStatus();
   }
   private markup(screen:string):string {
     const title=(text:string)=>`<h2 id="game-menu-title" tabindex="-1">${text}</h2>`;
     const d=this.mission?.definition??MALO_DINARD;
+    if(screen==='excursions')return title('Excursion et ambiance')+'<p>Choisissez les commentaires, préparez votre excursion et réglez les volumes. La navigation est en pause pendant la préparation.</p>';
     if(screen==='settings')return title('Paramètres')+'<p>Les réglages sont sauvegardés sur cet appareil. Pendant une mission, les conditions du briefing restent fixes.</p>';
     if(screen==='free')return title('Navigation libre')+`<p>Parcourez toute la baie, sans trajet imposé. Choisissez les conditions, puis prenez la barre.</p>${this.weatherChoices()}<button class="game-primary" data-action="start-free">Prendre la barre</button>`;
     if(screen==='missions')return title('Missions')+`<p>Une traversée complète, de l’embarquement au débarquement.</p>${MISSIONS.map(m=>`<article class="mission-choice"><h3>${escape(m.title)}</h3><p>${escape(m.description)}</p><p>5–6 min · ${m.cruiseKnots} nd conseillés · départ ${m.departureHour}:00</p><button data-action="start-mission" data-mission="${m.id}">Préparer la traversée</button></article>`).join('')}`;
@@ -104,7 +111,7 @@ export class Game {
       const s=this.store.data.stats;return title('Progression locale')+`<dl class="score-breakdown">${[['Traversées réussies',s.completed],['Tentatives interrompues',s.failed],['Passagers transportés',s.passengers],['Meilleure note',`${s.best} / 100`],['Temps en mission',clock(s.seconds)],['Temps en navigation libre',clock(s.freeSeconds)],['Distance en mode libre',`${(s.freeDistance/1852).toFixed(2)} milles`]].map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl><h3>Dernières traversées</h3>${this.store.data.history.length?`<ul class="game-history">${this.store.data.history.slice(0,8).map(r=>`<li><span>${escape(MISSIONS.find(m=>m.id===r.missionId)?.title??r.missionId)}<br><small>${escape(r.grade)} · ${clock(r.elapsed)}</small></span><strong>${r.score} / 100</strong></li>`).join('')}</ul>`:'<p>Aucune traversée terminée. Votre première mission vous attend.</p>'}<p>Sauvegarde IndexedDB sur ce navigateur, sans compte.</p>`;
     }
     const canResume=(this.started&&!this.mission?.finished)||this.store.data.active;
-    return title(this.started?'Traversée en pause':'À vous la barre')+`<p>La baie de Saint-Malo et Dinard à bord du Corsaire d’Émeraude.</p><nav class="game-main-nav" aria-label="Modes de jeu">${canResume?'<button class="game-primary" data-action="resume">Reprendre la partie</button>':''}${this.started&&this.mode==='free'&&this.store.data.active?'<button data-action="resume-saved">Reprendre la mission sauvegardée</button>':''}<button data-action="free">Navigation libre <span>Choisir la météo et explorer la baie</span></button><button data-action="missions">Missions <span>Saint-Malo → Dinard · 180 passagers</span></button><button data-action="settings">Paramètres</button><button data-action="progress">Progression et statistiques locales</button></nav>${this.started&&this.mode==='mission'&&!this.mission?.finished?'<div class="game-buttons"><button data-action="restart">Redémarrer la mission</button><button data-action="checkpoint">Reprendre au point sûr</button></div>':''}<p class="game-storage" role="status"></p><small>Données maritimes fictives · ne pas utiliser pour la navigation réelle.</small>`;
+    return title(this.started?'Traversée en pause':'À vous la barre')+`<p>La baie de Saint-Malo et Dinard à bord du Corsaire d’Émeraude.</p><nav class="game-main-nav" aria-label="Modes de jeu">${canResume?'<button class="game-primary" data-action="resume">Reprendre la partie</button>':''}${this.started&&this.mode==='free'&&this.store.data.active?'<button data-action="resume-saved">Reprendre la mission sauvegardée</button>':''}<button data-action="free">Navigation libre <span>Choisir la météo et explorer la baie</span></button><button data-action="missions">Missions <span>Saint-Malo → Dinard · 180 passagers</span></button><button data-action="settings">Paramètres</button><button data-action="progress">Progression et statistiques locales</button><button data-action="excursions">Excursion et son</button></nav>${this.started&&this.mode==='mission'&&!this.mission?.finished?'<div class="game-buttons"><button data-action="restart">Redémarrer la mission</button><button data-action="checkpoint">Reprendre au point sûr</button></div>':''}<p class="game-storage" role="status"></p><small>Données maritimes fictives · ne pas utiliser pour la navigation réelle.</small>`;
   }
   private weatherChoices():string {
     const m=this.store.data.marine;
@@ -121,6 +128,7 @@ export class Game {
     this.store.data.active=null;
     this.mission=new Mission(definition);this.mode='mission';this.started=false;this.lastPhase=undefined;
     this.world.vessel.dynamics.reset(definition.origin.berth);this.world.vessel.marine.damage=0;this.world.vessel.moored=true;
+    this.world.passengers.reset();this.immersion.reset();
     this.applyMarine({...this.store.data.marine,sea:definition.sea,hour:definition.departureHour,targetDirection:definition.windDirection,tidePhase:0,evolving:true,dayCycle:false,tideCycle:true});
     this.resetView();this.markers.setMission(definition);this.show('briefing');
   }
@@ -132,6 +140,7 @@ export class Game {
     const get=(id:string)=>this.dialog.querySelector<HTMLInputElement>(`#${id}`)!;
     this.store.data.marine=readMarine({...this.store.data.marine,sea:get('free-sea').value,hour:Number(get('free-hour').value),targetDirection:Number(get('free-wind').value),damageEnabled:get('free-damage').checked});
     this.mode='free';this.mission=undefined;this.world.vessel.moored=false;this.world.vessel.dynamics.reset();this.world.vessel.marine.damage=0;
+    this.world.passengers.reset();this.immersion.reset();
     document.querySelector('#app')!.classList.remove('mission-active');this.lockMissionSettings();
     this.applyMarine(this.store.data.marine);this.resetView();this.markers.setMission(null);this.launch();
   }
@@ -145,6 +154,7 @@ export class Game {
       if(!saved||!definition){this.show('home');return;}
       this.mission=new Mission(definition,saved.mission);this.mode='mission';
       this.world.vessel.dynamics.restore(saved.vessel,saved.command);this.applyMarine(readMarine(saved.marine));this.world.vessel.marine.damage=saved.damage;
+      this.world.passengers.reset(saved.passengers);this.immersion.reset(saved.tourVisited);
       this.resetView();this.markers.setMission(definition);
     }
     if(this.mission?.finished){this.show('result');return;}this.launch();
@@ -154,6 +164,7 @@ export class Game {
     this.mission.recover();const def=this.mission.definition;
     this.world.vessel.dynamics.reset(this.mission.state.checkpoint==='approach'?def.destination.approach:def.origin.berth);
     this.world.vessel.marine.damage=Math.min(.3,this.world.vessel.marine.damage);this.resetView();this.launch();
+    this.world.passengers.reset(this.world.passengers.snapshot());
   }
   private action():void {
     const m=this.mission;if(!m)return;
@@ -171,23 +182,32 @@ export class Game {
     v.moored=this.mode==='mission'&&!!this.mission?.moored;
     this.helm.setEnabled(!v.moored);this.helm.update(dt);this.world.update(dt);
     if(this.mode==='mission'&&this.mission){
+      if(this.world.passengers.count>0)this.mission.state.metrics.discomfort+=Math.max(0,v.marine.waves-.5)*dt*.025;
       this.mission.update(dt,this.telemetry());
+      this.updatePassengers(dt);
       if(this.mission.finished){
         if(this.mission.result)recordResult(this.store.data,this.mission.result);
         this.show('result');return;
       }
       if(this.mission.phase!==this.lastPhase){this.lastPhase=this.mission.phase;this.snapshot();}
     }else{
+      this.updatePassengers(dt);
       const s=v.dynamics.state;this.store.data.stats.freeSeconds+=dt;
       if(this.previousFree)this.store.data.stats.freeDistance+=Math.hypot(s.x-this.previousFree.x,s.z-this.previousFree.z);
       this.previousFree={x:s.x,z:s.z};
     }
+    this.immersion.update(dt);
     this.autosave+=dt;if(this.autosave>=10){this.autosave=0;this.snapshot();}
   }
   render(dt:number):void {
     this.renderTimer+=dt;if(this.renderTimer<.2)return;this.renderTimer=0;
     if(!this.paused)this.ui.status.textContent=this.mode==='mission'&&this.mission?`${names[this.mission.phase]} · ${this.mission.definition.title}`:'Navigation libre · Deux moteurs';
     this.refreshHud();
+    this.immersion.render();
+  }
+  private updatePassengers(dt:number):void {
+    const m=this.mode==='mission'?this.mission:undefined,s=this.world.vessel.dynamics.state;
+    this.world.passengers.update(dt,m?.phase??'free',m?.state.phaseTime??0,m?.definition.passengers??48,m?.definition.boardingSeconds??18,m?.definition.unloadingSeconds??12,Math.hypot(s.surge,s.sway),s.yawRate,this.world.vessel.marine.waves);
   }
   private target():{x:number;z:number;label:string}|undefined {
     const m=this.mission;if(!m)return;
@@ -226,7 +246,7 @@ export class Game {
     const m=this.mission,v=this.world.vessel;
     this.store.data.instruments=this.marinePanel.captureLayout();
     if(this.mode==='mission'&&m&&m.phase!=='preparation'&&!m.finished){
-      this.store.data.active={missionId:m.definition.id,mission:structuredClone(m.state),vessel:{...v.dynamics.state},command:{...v.dynamics.command},marine:readMarine(v.marine),damage:v.marine.damage};
+      this.store.data.active={missionId:m.definition.id,mission:structuredClone(m.state),vessel:{...v.dynamics.state},command:{...v.dynamics.command},marine:readMarine(v.marine),damage:v.marine.damage,passengers:this.world.passengers.snapshot(),tourVisited:[...this.immersion.guide.visited]};
     }else if(this.mode==='mission'&&m?.finished)this.store.data.active=null;
     void this.store.save().then(()=>this.storageStatus());
   }
@@ -234,5 +254,5 @@ export class Game {
     const status=this.dialog.querySelector('.game-storage');if(status)status.textContent=this.store.available?'Sauvegarde locale automatique · aucun compte requis':'Stockage indisponible : progression conservée pour cette session uniquement.';
     if(!this.store.available)this.ui.storageWarning();
   }
-  dispose():void {this.snapshot();this.abort.abort();this.returnSettings();this.dialog.remove();this.hud.remove();this.menuButton.remove();this.markers.dispose();this.store.close();}
+  dispose():void {this.snapshot();this.abort.abort();this.returnSettings();this.immersion.dispose();this.dialog.remove();this.hud.remove();this.menuButton.remove();this.markers.dispose();this.store.close();}
 }

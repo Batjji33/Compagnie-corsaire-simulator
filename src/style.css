@@ -222,3 +222,30 @@ button:disabled {opacity:.45;cursor:default;}
   #mission-hud p {font-size:12px;margin:4px 0;}
   .mission-active .scene-caption {display:none;}
 }
+
+/* Immersion stays in the footer and menu; the sea and helm layout remain clear. */
+.footer-tools {display:flex;gap:8px;align-items:center;flex-shrink:0;}
+.footer-tools button,.footer-tools summary {min-height:44px;font-size:12px;padding:0 10px;}
+.immersion-ready footer>div:first-child {min-width:0;flex:1;}
+.immersion-ready #camera-help {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+#passenger-status {font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;}
+#tour-caption {margin:4px 0 0;line-height:1.4;font-size:12px;max-height:2.8em;overflow:auto;overscroll-behavior:contain;}
+#tour-caption:empty {display:none;}
+.immersion-panel h3 {margin:18px 0 10px;}
+.immersion-panel input:not([type=checkbox]):not([type=range]),.immersion-panel textarea {display:block;width:100%;min-height:44px;margin:6px 0 12px;padding:8px;border:1px solid var(--line);border-radius:4px;background:var(--raised);color:inherit;font-size:16px;}
+.immersion-panel label:not(.check) {display:block;}
+.immersion-panel textarea {resize:vertical;}
+.volume-control {display:grid!important;grid-template-columns:1fr auto;align-items:center;gap:4px;font-size:14px;margin:12px 0;}
+.volume-control input {grid-column:1/-1;min-height:44px;width:100%;margin:0;accent-color:var(--accent);}
+.volume-control output {font-variant-numeric:tabular-nums;font-size:13px;color:var(--accent);}
+.tour-coordinates {display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.tour-editor {margin:16px 0;}
+.tour-editor summary {min-height:44px;display:flex;align-items:center;cursor:pointer;}
+#tour-full-text {font-size:15px!important;color:inherit!important;line-height:1.6;white-space:pre-wrap;}
+#tour-source {color:var(--accent);font-size:13px;}
+#voice-status,#tour-editor-status {min-height:20px;}
+.game-main-nav button[data-action=excursions] {grid-column:1/-1;}
+#radar-returns .radar-traffic {fill:#83c6b7;stroke:#132c28;stroke-width:1;}
+#radar-returns .radar-traffic.risk {fill:#ffc477;stroke:#4a2618;stroke-width:2;}
+@media(max-width:850px) {.footer-tools {gap:4px;}.footer-tools button,.footer-tools summary {padding:0 8px;}.footer-tools summary {max-width:85px;}}
+@media(max-width:700px) {.immersion-ready footer {flex-wrap:wrap;gap:6px;}.immersion-ready footer>div:first-child {flex-basis:100%;}.footer-tools {margin-left:auto;}.tour-coordinates {grid-template-columns:1fr 1fr;}.tour-coordinates label:last-child {grid-column:1/-1;}}
