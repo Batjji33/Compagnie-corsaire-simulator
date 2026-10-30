@@ -27,27 +27,62 @@ un résultat. Il ne modifie jamais la position du navire.
 
 ## Service continu Saint-Malo ↔ Dinard
 
-`FerryService.ts` compose les trajets `Mission` existants. Au terme du débarquement,
-il enregistre le trajet, inverse la route et démarre un nouvel embarquement. Il ne
+`FerryService.ts` compose les trajets `Mission` existants. Au terme de l’escale,
+il enregistre le trajet, inverse la route et prépare le départ manuel. Il ne
 possède ni ne modifie la position du bateau. Seule la ligne `malo-dinard` utilise ce
 mode dans `Game` ; les autres définitions gardent leur mission finie classique.
 
 Les effectifs varient de façon déterministe entre 140 et 260 voyageurs, plafonnés
-par la capacité du navire. Les escales durent 12 + 18 secondes au minimum, puis
-attendent le largage manuel. Le mode continu désactive les échecs automatiques et
+par la capacité du navire. Les transferts durent 12 s de débarquement puis 18 s
+d’embarquement, à l’intérieur d’une escale de 120 s minimum. Le mode continu désactive les échecs automatiques et
 la pénalité de ponctualité ; les contacts, dégâts et effets de mer restent simulés.
 
 `ServiceSnapshot` contient les compteurs cumulés et la qualité de l’approche en
 cours ; l’état `MissionSnapshot` contient le trajet actuel. La direction dépend du
 nombre de trajets terminés. Les anciennes parties actives sont reprises dans le
 premier trajet du service sans modifier la position, le cap ou les passagers.
-Le nombre de traversées et les passagers livrés sont comptés après débarquement
-complet. Les historiques sont bornés à 100 entrées. Les trajets et le bilan de fin
+Le nombre de traversées et les passagers livrés sont comptés en fin d’escale ; une
+fin manuelle pendant l’escale crédite aussi les voyageurs déjà débarqués.
+Les historiques sont bornés à 100 entrées. Les trajets et le bilan de fin
 ont des identifiants distincts et une comptabilité séparée pour éviter les doublons.
 
 La satisfaction moyenne est pondérée par les voyageurs débarqués. La qualité des
 accostages vaut 100 moins jusqu’à 20 points selon la vitesse au moment d’amarrer
 et 20 points par contact d’approche ; les appuis latéraux protégés n’enlèvent rien.
 Une absence de traversée terminée produit des moyennes absentes, pas une note fictive.
+
+### Horaires de simulation
+
+`ServiceSnapshot.elapsed` est la source de temps unique, avancée par le pas physique
+fixe existant. L’horloge de bord et celle de `Marine` valent `14 h + elapsed / 3600`,
+avec retour à minuit. La pause suspend ce temps. `core/time.ts` fournit le format HH:mm.
+Les autres modes conservent leur cycle temporel existant.
+
+`timing` sauvegarde le départ prévu, l’arrivée prévue (départ + 360 s), l’accostage
+réel et le prochain départ autorisé : `max(arrivée prévue, accostage) + 120 s`.
+Le premier départ est prévu après les 18 s d’embarquement initial. Chaque nouveau
+trajet reçoit 360 s à partir de son départ autorisé ; un largage volontairement
+retardé consomme donc ce créneau. Le retard cumulé est la somme des retards aux
+accostages, avec le retard en cours ajouté à l’affichage pendant la navigation.
+Les retards d’arrivée décalent le départ suivant ; ils restent acquis au cumul.
+
+Le compteur de créneau reboucle toutes les 360 s, indépendamment de la mission.
+L’expiration ne modifie ni route ni navire. Une arrivée anticipée conserve le temps
+restant avant les 120 s d’escale ; une arrivée tardive impose 120 s dès l’accostage.
+`Mission.unloadingAllowed` garde le trajet actif jusqu’au terme de l’escale et
+`departureAllowed` empêche le largage prématuré, sans changer les missions classiques.
+`transfer` expose séparément les opérations passagers au port d’arrivée.
+
+`skipWait` exige un accostage valide et les 30 s de transferts terminées. Il avance
+uniquement le temps restant, rend le résultat du trajet pour sa comptabilité et
+laisse le retour amarré. `Game` synchronise l’heure maritime, la marée, les passagers,
+le HUD et la sauvegarde ; aucun pas de navigation ou changement de position n’est
+exécuté. Les secondes passées font partie du temps simulé de service, des escales
+et des statistiques de mission ; elles sont aussi isolées dans `skippedSeconds`.
+Navigation, escale et retard restent des compteurs distincts.
+
+Les anciennes sauvegardes sans `timing` migrent en conservant leur temps et leur
+trajet. Leur répartition historique navigation/escale est estimée à partir de la
+phase restaurée, faute d’informations antérieures ; les nouveaux trajets sont exacts.
 
 Voir [le guide de jeu](../../docs/GAMEPLAY.md) pour les commandes et les règles.

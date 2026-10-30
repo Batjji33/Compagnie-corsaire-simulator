@@ -36,20 +36,32 @@ libre alimentent les statistiques locales.
    sans passage obligatoire au neutre et sans attente de stabilité. Le HUD indique la distance,
    la vitesse et la raison d'un éventuel blocage. Un contact incident ou un dégagement
    sous la quille inférieur ou égal à 0,3 m empêche l'amarrage.
-7. **Débarquement** : le bateau est maintenu à sa position d'accostage pendant
-   12 secondes. À la fin, le compteur ajoute la traversée et ses passagers livrés.
-8. **Retour** : un nouvel embarquement de 18 secondes commence automatiquement
-   vers l'autre cale, sans menu, rechargement ou déplacement du bateau. Les effectifs
+7. **Escale** : le bateau reste à sa position d'accostage. Les passagers débarquent
+   en 12 secondes, puis le retour embarque en 18 secondes. L’escale dure 2 minutes
+   après l’arrivée prévue ou l’arrivée réelle si elle est plus tardive. Une arrivée
+   anticipée conserve donc le temps restant des 6 minutes avant ces 2 minutes.
+   Après les transferts, **Passer l’attente** avance l’heure au départ autorisé,
+   sans déplacer le bateau. Le largage reste manuel.
+8. **Retour** : à la fin de l’escale, le compteur ajoute la traversée et les voyageurs
+   livrés, puis prépare le trajet inverse sans menu ni rechargement. Les effectifs
    varient raisonnablement entre 140 et 260 voyageurs, sans dépasser la capacité de
    270. La destination, les repères et les indications de cap s'inversent. Une fois
-   l'embarquement terminé, prolonger l'escale librement ou larguer les amarres.
+   l’escale terminée, rester au port librement ou larguer les amarres.
 9. **Fin du service** : ouvrir le journal de bord ou le menu de pause, puis choisir
    **Terminer le service** et confirmer. Le bilan affiche traversées réalisées,
    voyageurs transportés, durée totale, satisfaction moyenne et qualité des accostages.
    Seuls les débarquements terminés comptent ; arrêter en cours de trajet ne compte
    pas les voyageurs encore à bord. Annuler la confirmation reprend le même service.
 
-Les allers-retours sont illimités. Les horaires sont indicatifs et les incidents
+L’horloge HH:mm apparaît sous le chronomètre de créneau. Chaque traversée dispose
+de 6 minutes ; à expiration, le compteur démarre automatiquement un nouveau créneau
+et le retard augmente jusqu’à l’accostage, sans changer la destination. Le journal
+présente les horaires, le temps de navigation, les escales et les retards cumulés.
+Chaque rotation prévoit 6 minutes de navigation puis 2 minutes d’escale ; le bateau
+ne repart donc pas toutes les 6 minutes. Un départ volontairement tardif consomme
+le créneau prévu. La pause suspend toute l’horloge de simulation.
+
+Les allers-retours sont illimités. Les retards et les incidents
 n'arrêtent pas automatiquement le service : dégâts, perte de puissance, contacts et
 satisfaction continuent de s'appliquer. La navigation libre et les missions classiques
 conservent leur fonctionnement propre. Aucun horaire réel n'est reproduit.
@@ -125,6 +137,11 @@ enchaîne un aller-retour avec positions de navigation préparées : identité d
 scène et du bateau inchangée aux escales, foules aux deux cales, reprise après
 rechargement à Dinard, départ manuel, annulation de fin de service, bilan persistant
 et retour au mode libre. Le HUD est inspecté sur six formats d'écran.
+
+`tests/timetable.test.ts` vérifie aussi les arrivées anticipées, ponctuelles et
+tardives, plusieurs créneaux manqués, les départs prolongés, les transferts,
+les sauts temporels sans déplacement, le cumul des retards, la fin en escale,
+la reprise des horaires et leur validation, minuit et l’égalité à 30 et 144 FPS.
 
 Les essais tactiles sur Chromium avec écran d'iPad et sur petit écran complètent le
 build TypeScript/Vite. Ils ne remplacent pas un essai matériel Safari/iPadOS.

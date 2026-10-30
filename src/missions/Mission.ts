@@ -31,6 +31,8 @@ export class Mission {
   state:MissionSnapshot;
   result:MissionResult|undefined;
   failure='';
+  departureAllowed=true;
+  unloadingAllowed=true;
   private lastContact=false;
   private previousSpeed:number|undefined;
   private previousPosition:{x:number;z:number}|undefined;
@@ -49,7 +51,7 @@ export class Mission {
   get moored():boolean{return this.phase==='preparation'||this.phase==='boarding'||(this.phase==='departure'&&!this.state.released)||this.phase==='unloading'||this.finished;}
   private enter(phase:MissionPhase):void {this.state.phase=phase;this.state.phaseTime=0;this.state.hold=0;}
   board():void {if(this.phase==='preparation')this.enter('boarding');}
-  release():void {if(this.phase==='departure')this.state.released=true;}
+  release():void {if(this.phase==='departure'&&this.departureAllowed)this.state.released=true;}
   dock(t:Telemetry):boolean {
     if(this.phase!=='docking'||!dockingStatus(this.definition,t).valid)return false;
     this.enter('unloading');return true;
@@ -87,7 +89,7 @@ export class Mission {
         break;
       case 'approach':if(Math.hypot(t.x-d.destination.berth.x,t.z-d.destination.berth.z)<d.destination.dockingRadius)this.enter('docking');break;
       case 'docking':s.hold=dockingStatus(d,t).valid?s.hold+dt:0;break;
-      case 'unloading':if(s.phaseTime>=d.unloadingSeconds){this.enter('complete');this.result=this.makeResult(true,`Arrivée validée à ${d.destination.name}.`);}break;
+      case 'unloading':if(s.phaseTime>=d.unloadingSeconds&&this.unloadingAllowed){this.enter('complete');this.result=this.makeResult(true,`Arrivée validée à ${d.destination.name}.`);}break;
     }
   }
   fail(reason:string):void {if(this.finished)return;this.failure=reason;this.enter('failed');this.result=this.makeResult(false,reason);}
