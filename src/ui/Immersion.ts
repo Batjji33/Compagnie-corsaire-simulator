@@ -136,6 +136,7 @@ export class Immersion {
   reset(visited:string[]=[]):void {this.audio.stopSpeech();this.pendingNarration=undefined;this.announcementSeconds=0;this.guide.reset();this.guide.visited=new Set(visited.filter(id=>this.guide.comments.some(c=>c.id===id)));this.caption.textContent='';this.notice.hidden=true;this.notice.open=false;}
   announce(text:string):void {if(!this.guide.muted)this.announcementSeconds=this.audio.speak(text)?Math.min(20,Math.max(3,text.length/12+1)):0;}
   update(dt:number):void {
+    this.audio.updateTrafficHorn(this.world.traffic.taxis.horn,this.world.vessel.dynamics.state,this.world.vessel.marine.sound);
     this.announcementSeconds=Math.max(0,this.announcementSeconds-dt);
     const s=this.world.vessel.dynamics.state,c=this.guide.update(dt,s.x,s.z);
     if(c){this.showComment(c);if(!this.guide.manual&&!this.guide.muted){if(this.announcementSeconds>0)this.pendingNarration=c.text;else this.audio.speak(c.text);}}

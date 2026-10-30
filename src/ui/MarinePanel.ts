@@ -5,6 +5,7 @@ import { ROCKS } from '../world/geography';
 import type { InstrumentLayout } from '../saves/GameStore';
 import type { Traffic } from '../traffic/Traffic';
 import { icon } from './icons';
+import { TAXI_LIVERIES } from '../traffic/WaterTaxis';
 
 /** UI samples physics at 5 Hz; no independent instrument simulation. */
 export class MarinePanel {
@@ -133,14 +134,22 @@ export class MarinePanel {
     set('nav-tide',`${String(Math.floor(m.hour)).padStart(2,'0')}:${String(Math.floor(m.hour%1*60)).padStart(2,'0')} · Marée ${m.tide.toFixed(1)} m ${m.tideCycle?(Math.cos(m.tidePhase)>=0?'↗':'↘'):'fixe'} · Courant ${(Math.hypot(m.currentX,m.currentZ)/.514444).toFixed(1)} nd`);
     set('nav-hull',`Coque ${Math.round((1-m.damage)*100)} % · Puissance disponible ${Math.round(m.performance*100)} %${m.damageEnabled?'':' · Dégâts désactivés'}`);
     this.alert.hidden=!m.warning;if(this.alert.textContent!==m.warning)this.alert.textContent=m.warning;
+    const fleet=this.traffic?.enabled?this.traffic.taxis.agents.filter(a=>a.active):[];
+    const label=(phase:string)=>({crossing:'en traversée',approach:'en approche',waiting:'en attente',docking:'accostage',stopover:'en escale',departure:'départ'}[phase]??phase);
+    const map=document.getElementById('map-taxis');
+    if(map)map.innerHTML=fleet.map((a,i)=>`<g data-taxi="${a.route.id}"><title>${a.route.name} · ${label(a.taxi!.phase)}</title><path d="M0 -70L45 55L0 35L-45 55Z" fill="#${TAXI_LIVERIES[i].hull.toString(16)}" stroke="#f1eee4" stroke-width="12" transform="translate(${a.x} ${a.z}) rotate(${a.heading*180/Math.PI})"/><text class="map-taxi-name" x="${a.x+100}" y="${a.z+90}">${i+1}</text></g>`).join('');
+    const legend=document.getElementById('map-taxi-legend');if(legend)legend.innerHTML=fleet.map((a,i)=>`<span>${i+1} · ${a.route.name} · ${label(a.taxi!.phase)}</span>`).join('');
+    const notices=this.traffic?(['malo','dinard'] as const).map(port=>{const text=this.traffic!.berthNotice(port);return text?`${port==='malo'?'Saint-Malo':'Dinard'} : ${text}`:'';}).filter(Boolean):[];
+    const berthStatus=document.getElementById('map-berth-status');if(berthStatus)berthStatus.textContent=notices.join(' · ');
     if(document.querySelector<HTMLElement>('#marine-radar')!.hidden)return;
     const scale=150/this.range;
     const point=(x:number,z:number)=>`${((x-s.x)*scale).toFixed(1)},${((z-s.z)*scale).toFixed(1)}`;
     document.getElementById('radar-returns')!.innerHTML=this.vessel.contact.obstacles.map(o=>`<polygon points="${o.polygon.map(p=>point(...p)).join(' ')}"/>`).join('')+ROCKS.map(r=>`<circle cx="${(r.x-s.x)*scale}" cy="${(r.z-s.z)*scale}" r="${r.radius*.7*scale}"/>`).join('')+SHOALS.map(a=>`<ellipse class="radar-shoal" cx="${(a.x-s.x)*scale}" cy="${(a.z-s.z)*scale}" rx="${a.rx*scale}" ry="${a.rz*scale}"/>`).join('');
     const traffic=this.traffic?.enabled?this.traffic.agents.filter(a=>a.active):[];
-    document.getElementById('radar-returns')!.innerHTML+=traffic.map(a=>`<path data-traffic="${a.route.id}" class="radar-traffic ${a.route.id===this.traffic?.risk?.id?'risk':''}" d="M0 -6L4 5L0 3L-4 5Z" transform="translate(${point(a.x,a.z).replace(',', ' ')}) rotate(${a.heading*180/Math.PI})"/>`).join('');
+    document.getElementById('radar-returns')!.innerHTML+=traffic.map(a=>`<g><title>${a.route.name}${a.taxi?` · ${label(a.taxi.phase)}`:''}</title><path data-traffic="${a.route.id}" class="radar-traffic ${a.route.id===this.traffic?.risk?.id?'risk':''}" d="M0 -6L4 5L0 3L-4 5Z" transform="translate(${point(a.x,a.z).replace(',', ' ')}) rotate(${a.heading*180/Math.PI})"/></g>`).join('');
     const nearby=traffic.filter(a=>Math.hypot(a.x-s.x,a.z-s.z)<=this.range).length;
-    document.getElementById('radar-traffic-status')!.textContent=this.traffic?.risk?`Croisement : ${this.traffic.risk.name} · ${Math.round(this.traffic.risk.distance)} m`:`${nearby} écho${nearby>1?'s':''} à portée · nord fixe`;
+    const taxi=fleet.find(a=>Math.hypot(a.x-s.x,a.z-s.z)<=this.range&&(a.taxi!.phase==='waiting'||a.taxi!.phase==='stopover'));
+    document.getElementById('radar-traffic-status')!.textContent=this.traffic?.risk?`Croisement : ${this.traffic.risk.name} · ${Math.round(this.traffic.risk.distance)} m`:taxi?`${taxi.route.name} · ${label(taxi.taxi!.phase)}`:`${nearby} écho${nearby>1?'s':''} à portée · nord fixe`;
     document.getElementById('radar-ship')!.setAttribute('transform',`rotate(${reading.heading})`);
     document.getElementById('radar-heading-line')!.setAttribute('transform',`rotate(${reading.heading})`);
   }

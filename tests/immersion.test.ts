@@ -19,27 +19,27 @@ test('closest-approach prediction distinguishes crossing, passing clear and movi
   assert.equal(closestApproach(a,{...b,vz:-10}).closing,false);
   assert.ok(Number.isFinite(closestApproach({...a,vz:0},{...b,vz:0}).distance));
 });
-test('24 vessels in five families follow safe bounded routes with gradual motion',()=>{
+test('24 ambient vessels and three taxis follow bounded routes with gradual motion',()=>{
   const t=new Traffic(),player=new VesselDynamics({x:4000,z:4000,heading:0});
-  assert.equal(new Set(TRAFFIC_ROUTES.map(r=>r.kind)).size,5);assert.equal(t.agents.length,24);
+  assert.equal(new Set(TRAFFIC_ROUTES.map(r=>r.kind)).size,5);assert.equal(t.agents.length,27);
   const initial=t.agents.map(a=>({x:a.x,z:a.z}));let changedHeading=false;
   for(let i=0;i<120*60;i++){
     const old=t.agents.map(a=>a.heading);t.update(1/60,player.state,14,.4,9000);
     for(const [j,a] of t.agents.entries()){
       assert.ok([a.x,a.z,a.speed,a.heading].every(Number.isFinite));
-      assert.ok(navigable(a.x,a.z,a.route.length/2),a.route.name);
+      assert.ok(navigable(a.x,a.z,a.route.length/2,a.taxi?.destination),a.route.name);
       assert.ok(Math.abs(a.heading-old[j])<=TRAFFIC_TURN_RATE[a.route.kind]/60+1e-9);
       assert.ok(a.speed<=a.route.knots*1852/3600+1e-9);
       if(Math.abs(a.heading-old[j])>.0001)changedHeading=true;
     }
   }
   assert.ok(changedHeading);assert.ok(t.agents.every((a,i)=>Math.hypot(a.x-initial[i].x,a.z-initial[i].z)>20));
-  assert.equal(t.agents.filter(a=>a.active).length,24);
+  assert.equal(t.agents.filter(a=>a.active).length,27);
 });
 test('traffic density responds to hour, weather and quality without spawning next to player',()=>{
   assert.equal(trafficDensity(14,.3,8000),24);assert.equal(trafficDensity(2,.3,8000),9);assert.equal(trafficDensity(14,2.5,2000),12);
-  const t=new Traffic(),p=new VesselDynamics({x:4000,z:4000,heading:0});t.limit=TRAFFIC_LIMITS.low;t.update(.016,p.state,14,.3,8000);assert.equal(t.agents.filter(a=>a.active).length,18);
-  t.update(.016,p.state,2,2.5,1500);assert.equal(t.agents.filter(a=>a.active).length,9);
+  const t=new Traffic(),p=new VesselDynamics({x:4000,z:4000,heading:0});t.limit=TRAFFIC_LIMITS.low;t.update(.016,p.state,14,.3,8000);assert.equal(t.agents.filter(a=>a.active).length,21);
+  t.update(.016,p.state,2,2.5,1500);assert.equal(t.agents.filter(a=>a.active).length,12);
   t.enabled=false;t.update(.016,p.state,14,.3,8000);assert.ok(t.agents.every(a=>!a.active));
   const near=new Traffic(),first=near.agents[0];p.state.x=first.x;p.state.z=first.z;near.update(.016,p.state,14,.3,8000);assert.equal(first.active,false);
 });

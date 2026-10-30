@@ -21,10 +21,10 @@ export class CorsaireModel {
     green:new MeshStandardMaterial({color:0x329463}),
   };
   private textures:CanvasTexture[]=[];
-  private wheel:Mesh;
+  private wheel:Mesh|undefined;
   private displays:{canvas:HTMLCanvasElement;texture:CanvasTexture;text:string}[]=[];
-  constructor() {
-    this.root.name='Corsaire d’Émeraude';
+  constructor(options:{exteriorOnly?:boolean;name?:string}={}) {
+    this.root.name=options.name??'Corsaire d’Émeraude';
     const batches=new Map<string,{group:Group;material:MeshStandardMaterial;geometries:BufferGeometry[]}>();
     const part=(geometry:BufferGeometry,material:keyof typeof this.materials,group=this.root)=> {
       // Normalize attributes before merging dissimilar primitives.
@@ -80,6 +80,7 @@ export class CorsaireModel {
     cylinder(0,8,-3.5,.09,3.3,'white');box(0,7.15,-3.5,2,.18,.45,'white');cylinder(.9,7,-2.7,.25,.5,'white');
     rail(new Vector3(-.7,6.6,-4),new Vector3(-.7,9.8,-4),.025,'rail');
     // Interpretation of the cockpit, attached to the stable camera instead of the rolling shell.
+    if(!options.exteriorOnly){
     box(0,-1.05,-1.5,3.8,.65,.8,'dark',this.cockpit);
     for(const x of [-.8,.8]) {
       box(x,-.68,-1.55,.75,.08,.45,'dark',this.cockpit);
@@ -90,8 +91,9 @@ export class CorsaireModel {
     }
     for(const x of [-1.8,1.8])rail(new Vector3(x,-1,-2),new Vector3(x,1.3,-2),.045,'white',this.cockpit);
     this.wheel=new Mesh(new TorusGeometry(.26,.025,6,20),this.materials.dark);this.wheel.position.set(0,-.65,-1);this.cockpit.add(this.wheel);
+    }
     for(const batch of batches.values()) {const merged=mergeGeometries(batch.geometries,false)!;batch.geometries.forEach(g=>g.dispose());batch.group.add(new Mesh(merged,batch.material));}
-    this.addName();
+    if(!options.exteriorOnly)this.addName();
   }
   private addName():void {
     const canvas=document.createElement('canvas');canvas.width=512;canvas.height=64;const ctx=canvas.getContext('2d')!;
@@ -101,7 +103,7 @@ export class CorsaireModel {
     for(const side of [-1,1]) {const name=new Mesh(new PlaneGeometry(5,.65),material);name.position.set(side*3.12,1.45,-7.3);name.rotation.y=side*Math.PI/2;this.root.add(name);}
   }
   setCockpit(active:boolean):void {this.bridge.visible=!active;this.cockpit.visible=active;}
-  updateWheel(rudder:number):void {this.wheel.rotation.z=-rudder*4;}
+  updateWheel(rudder:number):void {if(this.wheel)this.wheel.rotation.z=-rudder*4;}
   updateInstruments(state:VesselState,powerFactor=1):void {
     const lines=[
       [`${(Math.hypot(state.surge,state.sway)/KNOT).toFixed(1)} nd`,`Cap ${Math.round((state.heading*180/Math.PI%360+360)%360)%360}°`],

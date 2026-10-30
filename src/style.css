@@ -171,6 +171,9 @@ kbd { font: inherit; color: var(--muted); margin-left: auto; }
 .map-dock { fill: #edc076; } #map-camera { fill: white; stroke: #253038; stroke-width: 30; }
 #bay-map .map-shoal, .briefing-map .map-shoal { fill: none; stroke: #edc076; stroke-width: 15; stroke-dasharray: 40 30; }
 #bay-map p { font-size: 12px; line-height: 1.5; color: var(--muted); margin: 10px 0 0; }
+#bay-map .map-taxi-name { font-size: 300px; fill: var(--accent); stroke: #24434a; stroke-width: 35px; paint-order: stroke; }
+#map-taxi-legend { margin-top: 10px; font-size: 12px; line-height: 1.6; color: var(--muted); }
+#map-taxi-legend span { display: block; }
 #fps { position: absolute; right: calc(var(--right) + 62px); top: 37%; z-index: 4; padding: 8px; background: var(--hud); border-radius: 8px; font-size: 12px; font-variant-numeric: tabular-nums; }
 
 /* Both modules share the lower edge; expanded content grows upward without overlap. */

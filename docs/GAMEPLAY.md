@@ -66,6 +66,14 @@ n'arrêtent pas automatiquement le service : dégâts, perte de puissance, conta
 satisfaction continuent de s'appliquer. La navigation libre et les missions classiques
 conservent leur fonctionnement propre. Aucun horaire réel n'est reproduit.
 
+Trois bateaux-taxis IA assurent aussi leurs rotations et partagent les cales.
+À l’approche, une place occupée ou réservée bloque « Amarrer et débarquer » avec
+« Quai occupé — veuillez patienter ». Garder le chenal libre et attendre la fin
+du dégagement. Les navettes vous laissent la cale tant que vous l’occupez ; après
+30 secondes, elles peuvent signaler leur attente à la corne. Leurs noms et états
+sont visibles sur la carte et le radar. « Passer l’attente » conserve leur activité
+pendant le saut de temps, sans déplacer votre navire.
+
 Le temps de mission s'arrête en pause et lorsque l'onglet est masqué. L'horloge du
 navire avance en temps normal pendant la mission, indépendamment du cycle accéléré
 jour/nuit conservé dans le mode libre. La météo du briefing est fixée pour la mission ;
