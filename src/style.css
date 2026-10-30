@@ -178,6 +178,7 @@ kbd { font: inherit; color: var(--muted); margin-left: auto; }
 #mission-hud { width: 100%; padding: 12px 14px; background: var(--hud); border: 1px solid var(--edge); border-radius: 14px; font-size: 12px; pointer-events: auto; }
 .objective-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .objective-top strong { font-size: 14px; font-weight: 550; }
+.objective-summary { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 #objective-time { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 #objective-guidance { color: var(--accent); line-height: 1.5; font-variant-numeric: tabular-nums; margin: 6px 0 8px; }
 .objective-actions { display: flex; gap: 6px; flex-wrap: wrap; }

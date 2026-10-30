@@ -46,7 +46,7 @@ export class Game {
     document.querySelector('.header-actions')!.prepend(this.menuButton);
     this.menuButton.addEventListener('click',()=>this.show('home'),options);
     this.hud.id='mission-hud';this.hud.hidden=true;this.hud.setAttribute('aria-label','Objectif de mission');
-    this.hud.innerHTML='<div class="objective-top"><strong id="objective-phase"></strong><span id="objective-time"></span></div><p id="objective-guidance"></p><div class="objective-actions"><button id="mission-action"></button><button id="mission-details" aria-expanded="false" aria-controls="objective-details">Journal de bord</button></div><div id="objective-details" hidden><p id="objective-comment"></p><ol id="objective-steps"></ol><button id="service-end" hidden>Terminer le service</button></div>';
+    this.hud.innerHTML='<div class="objective-top"><strong id="objective-phase"></strong><span class="objective-summary"><span id="objective-count" hidden></span><span id="objective-time"></span></span></div><p id="objective-guidance"></p><div class="objective-actions"><button id="mission-action"></button><button id="mission-details" aria-expanded="false" aria-controls="objective-details">Journal de bord</button></div><div id="objective-details" hidden><p id="objective-comment"></p><ol id="objective-steps"></ol><button id="service-end" hidden>Terminer le service</button></div>';
     document.querySelector('.voyage-overlays')!.append(this.hud);
     this.hud.querySelector('#mission-action')!.addEventListener('click',()=>this.action(),options);
     this.hud.querySelector('#service-end')!.addEventListener('click',()=>this.show('end-service'),options);
@@ -296,9 +296,10 @@ export class Game {
     const m=this.mission;if(!m)return;
     const set=(id:string,value:string)=>{const element=this.hud.querySelector(`#${id}`)!;if(element.textContent!==value)element.textContent=value;};
     set('objective-phase',names[m.phase]);set('objective-time',`${clock(m.state.elapsed)} / cible ${clock(m.definition.targetSeconds)}`);set('objective-comment',m.definition.comments[m.phase]);
+    this.hud.querySelector<HTMLElement>('#objective-count')!.hidden=!this.service;
     if(this.service){
       const s=this.service.state;
-      set('objective-phase',`→ ${this.service.destinationName}`);set('objective-time',`${s.completed} trajet${s.completed>1?'s':''} · ${s.transported} transportés`);
+      set('objective-phase',`→ ${this.service.destinationName}`);set('objective-count',`${s.completed} trajet${s.completed>1?'s':''} · ${s.transported} transportés`);
       set('objective-comment',`${m.definition.comments[m.phase]} Service : ${clock(s.elapsed)}. ${this.world.passengers.count} passagers à bord.`);
     }
     this.hud.querySelector<HTMLElement>('#service-end')!.hidden=!this.service||!!this.service.result;
