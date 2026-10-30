@@ -24,14 +24,14 @@ La distance affichée est celle du centre du navire au point de cale : elle n’
 
 | Entrée | Action |
 | --- | --- |
-| Deux manettes tactiles / souris | Commandes indépendantes de −100 % (arrière) à +100 % (avant), maintenues après relâchement |
+| Deux manettes tactiles / souris | Sept crans indépendants : arrière 3/2/1 à −100/−65/−30 %, neutre, avant 1/2/3 à +30/+65/+100 %, maintenus après relâchement |
 | Neutre sous chaque moteur | Mettre ce moteur seul au neutre |
 | Deux moteurs au neutre / Espace | Retirer la demande de propulsion ; ne bloque pas la vitesse |
 | Barre tactile / souris | Consigne de −35° bâbord à +35° tribord |
 | Au milieu / X | Consigne zéro ; retour progressif du gouvernail |
-| Flèches haut / bas maintenues | Augmenter / réduire les deux manettes |
-| Q / A maintenues | Augmenter / réduire bâbord |
-| E / D maintenues | Augmenter / réduire tribord |
+| Flèches haut / bas | Monter / descendre les deux manettes d’un cran ; répétition native si maintenues |
+| Q / A | Monter / descendre bâbord d’un cran ; répétition native si maintenues |
+| E / D | Monter / descendre tribord d’un cran ; répétition native si maintenues |
 | Flèches gauche / droite maintenues | Déplacer progressivement la consigne de barre |
 | C | Basculer cockpit / extérieur |
 | Glisser, molette, pincer, +/− | Rotation et zoom extérieurs ; zoom limité du champ de vision au cockpit |
@@ -39,11 +39,25 @@ La distance affichée est celle du centre du navire au point de cale : elle n’
 | Recentrer / R | Revenir à la vue extérieure du bateau, sans le téléporter ni modifier les moteurs |
 | Pause | Suspendre physique et mouvements de mer, garder la caméra disponible |
 
-Les raccourcis de conduite n’interceptent pas les champs de formulaire. Sur un curseur focalisé, les flèches natives permettent un réglage fin. En exploration, les anciens raccourcis de déplacement de caméra sont préservés. Perdre le focus ou masquer l’onglet efface les touches maintenues, mais conserve les consignes des manettes.
+Les raccourcis de conduite n’interceptent pas les champs de formulaire. Sur un curseur moteur focalisé, les flèches natives changent le cran. Chaque levier affiche les sept repères, le cran actif, le pourcentage demandé et la poussée réellement délivrée. En exploration, les anciens raccourcis de déplacement de caméra sont préservés. Perdre le focus ou masquer l’onglet efface les touches maintenues, mais conserve les consignes des manettes.
 
 ## Physique et réglages
 
-`src/ships/parameters.ts` centralise dimensions, masse d’essai (95 t), inertie en lacet, poussée, écartement des moteurs, traînées, gouvernail, contacts, ondulation et caméra. **Masse, poussées et coefficients sont calibrés pour le jeu, pas issus d’essais du navire réel.** La puissance nominale des moteurs n’est pas assimilée à une poussée constante réelle.
+`src/ships/parameters.ts` centralise dimensions, masse effective de simulation (47,5 t, auparavant 95 t), inertie en lacet (4,5 millions de kg·m², auparavant 9 millions), poussée, écartement des moteurs, traînées, gouvernail, contacts, ondulation et caméra. **Masse, poussées et coefficients sont calibrés pour le jeu, pas issus d’essais du navire réel.** Ces deux inerties sont réduites de 50 %, sans modification de l’horloge physique ni de la géométrie. La puissance nominale des moteurs n’est pas assimilée à une poussée constante réelle.
+
+La constante de réponse moteur passe de 2,2 à 1 seconde et la temporisation au neutre de 0,8 à 0,35 seconde. Le bras de poussée de 3,2 m reste dans la demi-largeur de la coque ; la poussée arrière vaut 60 % de celle de l’avant et l’amortissement de lacet à faible vitesse est réduit. La résistance de rotation augmente toujours avec la vitesse ; la barre reste progressive (20°/s), dépend du mouvement de l’eau et inverse son effet en marche arrière. Une consigne opposée sur les deux moteurs produit un pivot prononcé ; avant 2 et arrière 3 compensent presque la différence de rendement des hélices.
+
+Mesures comparatives sans vent, courant ni contact, au même pas de 1/60 s :
+
+| Manœuvre | Avant | Après |
+| --- | --- | --- |
+| Atteindre 90 % de 19,5 nd, départ arrêté, deux moteurs avant 3 | 39,20 s | 19,48 s |
+| Perdre la moitié de la vitesse de croisière au neutre | 24,58 s | 12,17 s |
+| Passer de la pleine poussée avant à −30 % effectifs | 10,22 s | 4,65 s |
+| S’arrêter depuis 3 m/s avec deux moteurs arrière 3 | 16,17 s | 6,37 s |
+| Rotation en 20 s, avant 3 / arrière 3, départ arrêté | 25,51° | 65,58° |
+
+Les consignes sont quantifiées dans la simulation elle-même. Les anciens états sauvegardés restent continus ; leurs consignes sont ramenées au cran le plus proche à la reprise. Le débit de poussée réel reste exponentiel entre les crans et conserve le passage au neutre lors d’une inversion. La vitesse de pointe en ligne droite reste de 19,5 nd.
 
 `VesselDynamics` est indépendant de Three.js et du DOM. À chaque pas fixe de 1/60 s :
 
@@ -61,7 +75,7 @@ L’état précédent et l’état courant sont interpolés au rendu. Roulis, ta
 
 ## Validation et limites
 
-16 tests automatisés : fondations et géographie conservées, bornes des commandes, réponse de barre, accélération/vitesse cible, inertie au neutre, arrière, poussée différentielle, giration, déterminisme 30/144 FPS, contacts aux deux quais, temporisation d’inversion, barre en arrière et interpolation au passage du nord.
+Les tests automatisés couvrent notamment les sept crans, la reprise des anciennes consignes, la continuité de poussée, les temps d’accélération/freinage/inversion, le pivot dans les deux sens, la combinaison barre/poussée différentielle, le déterminisme 30/144 FPS et les contacts aux deux quais. Les essais Chromium du 30 octobre 2026 couvrent les sept positions par gestes tactiles, deux leviers déplacés simultanément, le neutre indépendant, le clavier et les deux caméras, aux formats ordinateur, iPad paysage/portrait, téléphone et paysage compact. Scripts et captures dans `.qa/naval-*`.
 
 Vérification Chromium avec gestes tactiles réels simulés : déplacement simultané et indépendant des manettes, persistance, neutre individuel, barre, clavier, changement de vue, exploration, départ du quai et stabilité d’horizon. Inspection des formats tablette/PC/portrait et paysage compact. Les captures et scripts ponctuels sont dans `.qa/`.
 

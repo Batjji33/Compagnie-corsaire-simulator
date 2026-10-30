@@ -1,4 +1,4 @@
-import { BOAT, KNOT, clamp } from '../ships/parameters.ts';
+import { BOAT, KNOT, clamp, engineCommand } from '../ships/parameters.ts';
 export interface HelmCommand { port: number; starboard: number; rudder: number }
 export interface VesselState {
   x: number; z: number; heading: number; surge: number; sway: number; yawRate: number;
@@ -27,7 +27,7 @@ export class VesselDynamics {
     this.engines=[state.port,state.starboard].map(value=>({value,gear:Math.sign(value),neutral:0}));
   }
   setCommand(update: Partial<HelmCommand>): void {
-    for(const key of ['port','starboard','rudder'] as const) if(update[key]!==undefined) this.command[key]=clamp(update[key],-1,1);
+    for(const key of ['port','starboard','rudder'] as const) if(update[key]!==undefined) this.command[key]=key==='rudder'?clamp(update[key],-1,1):engineCommand(update[key]);
   }
   private engine(index:number, requested:number, dt:number):number {
     const engine=this.engines[index], desired=Math.sign(requested);

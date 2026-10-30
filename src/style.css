@@ -69,11 +69,12 @@ footer p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
 .ship-cameras button[aria-pressed=true] { border-bottom:2px solid var(--accent); }
 .engine-control { text-align:center; }
 .engine-control label { display:block; font-size:13px; }
-.engine-control output { display:block; font-size:13px; min-height:18px; color:var(--accent); font-variant-numeric:tabular-nums; }
-.lever { display:flex; align-items:center; justify-content:center; height:64px; gap:3px; }
-.lever span { font-size:11px; color:var(--muted); }
-.lever span:first-child { align-self:flex-start; }.lever span:last-child { align-self:flex-end; }
-.lever input { writing-mode:vertical-lr; direction:rtl; appearance:slider-vertical; -webkit-appearance:slider-vertical; width:48px; height:62px; margin:0; touch-action:none; accent-color:var(--accent); }
+.engine-control output { display:block; font-size:12px; line-height:15px; min-height:30px; white-space:pre-line; color:var(--accent); font-variant-numeric:tabular-nums; }
+.lever { display:flex; align-items:center; justify-content:center; height:100px; gap:0; }
+.lever-notches { display:flex; flex-direction:column; justify-content:space-between; align-self:stretch; padding:7px 0; pointer-events:none; }
+.lever-notches span { font-size:11px; line-height:12px; color:var(--muted); }
+.lever-notches .selected { color:var(--accent); font-weight:700; }
+.lever input { writing-mode:vertical-lr; direction:rtl; appearance:slider-vertical; -webkit-appearance:slider-vertical; width:44px; height:98px; margin:0; touch-action:none; accent-color:var(--accent); }
 .engine-control button { min-height:44px; padding:0 12px; }
 .engine-control small { display:block; font-size:11px; color:var(--muted); margin-top:5px; }
 .rudder-title { display:flex; justify-content:space-between; gap:8px; }
@@ -100,7 +101,7 @@ footer p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
 @media (max-height:600px) and (orientation:landscape) {
   .piloting .topbar { padding:4px 12px; }.piloting .identity p,.piloting footer p { display:none; }
   .helm { grid-template-columns:144px minmax(0,1fr) 192px; padding:6px 12px;gap:8px; }
-  .lever { height:58px; }.lever input { height:56px; }.engine-control small { display:none; }
+  .lever { height:86px; }.lever input { height:84px; }.lever-notches { padding:5px 0; }.engine-control small { display:none; }
   .readings { margin:4px 0;gap:20px; }.readings strong { font-size:19px; }.helm-instruments>strong { font-size:12px; }
   #berth-distance { margin:3px 0;font-size:11px; }.ship-cameras button { min-height:44px; }
   .helm-actions { margin-top:4px;flex-wrap:wrap; }.helm details { margin-top:3px; }

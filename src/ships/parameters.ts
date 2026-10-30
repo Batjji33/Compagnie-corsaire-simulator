@@ -2,13 +2,14 @@
 export const KNOT = 1852 / 3600;
 export const BOAT = {
   length: 26.3, beam: 7.5, draft: 1.9, passengers: 270, maxSpeedKnots: 19.5,
-  mass: 95000, yawInertia: 9_000_000,
-  engineThrust: 20000, engineArm: 2.2, reverseEfficiency: 0.45,
-  engineResponse: 2.2, shiftNeutralTime: 0.8,
+  // Effective gameplay inertia: 50% of the previous calibration, not a measured displacement.
+  mass: 47500, yawInertia: 4_500_000,
+  engineThrust: 20000, engineArm: 3.2, reverseEfficiency: 0.6,
+  engineResponse: 1, shiftNeutralTime: 0.35,
   surgeLinearDrag: 600, reverseMaxSpeed: 3.2,
   swayLinearDrag: 23000, swayQuadraticDrag: 18000,
-  yawLinearDrag: 1_600_000, yawSpeedDrag: 200000, yawQuadraticDrag: 4_000_000,
-  rudderMaxDegrees: 35, rudderRateDegrees: 12, rudderLift: 680, rudderArm: 10,
+  yawLinearDrag: 900_000, yawSpeedDrag: 200000, yawQuadraticDrag: 4_000_000,
+  rudderMaxDegrees: 35, rudderRateDegrees: 20, rudderLift: 680, rudderArm: 10,
   spawn: { x: 920, z: 264, heading: -Math.PI / 2 },
   motion: { heave: 0.12, roll: 0.012, pitch: 0.008 },
   contact: { stiffness: 65000, damping: 38000, friction: 4000 },
@@ -17,3 +18,10 @@ export const BOAT = {
 export function clamp(value: number, min: number, max: number): number {
   return Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : 0;
 }
+/** Equally spaced lever positions; the requested thrust itself is deliberately nonlinear. */
+export const ENGINE_NOTCHES = [-1, -.65, -.3, 0, .3, .65, 1] as const;
+export function engineNotch(value:number):number {
+  const bounded=clamp(value,-1,1);
+  return ENGINE_NOTCHES.reduce<number>((best,notch,index)=>Math.abs(notch-bounded)<Math.abs(ENGINE_NOTCHES[best]-bounded)?index:best,3);
+}
+export function engineCommand(value:number):number { return ENGINE_NOTCHES[engineNotch(value)]; }

@@ -11,7 +11,7 @@ import type { ViewId } from './geography';
 import { Vessel } from '../ships/Vessel';
 import { VesselCamera } from './VesselCamera';
 import type { CameraMode } from './VesselCamera';
-import { Traffic } from '../traffic/Traffic';
+import { Traffic, TRAFFIC_LIMITS } from '../traffic/Traffic';
 import { TrafficView } from './TrafficView';
 import { Passengers } from '../passengers/Passengers';
 import { PassengerView } from './PassengerView';
@@ -65,7 +65,7 @@ export class World {
     this.controls.maxPolarAngle = Math.PI * 0.49;
     this.vessel=new Vessel();this.scene.add(this.vessel.root,this.camera);
     this.vesselCamera=new VesselCamera(this.camera,this.controls,this.vessel);
-    this.traffic.limit=quality==='low'?6:8;
+    this.traffic.limit=TRAFFIC_LIMITS[quality];
     this.trafficView=new TrafficView(this.traffic);this.scene.add(this.trafficView.root);
     this.passengerView=new PassengerView(this.vessel,this.passengers);this.scene.add(this.passengerView.quay);
   }
@@ -93,7 +93,7 @@ export class World {
   zoom(factor: number): void {
     this.vesselCamera.zoom(factor);
   }
-  setQuality(quality: Quality): void { this.quality = quality; this.traffic.limit=quality==='low'?6:8;this.ocean.setQuality(quality); this.environment.setQuality(quality); this.resize(); }
+  setQuality(quality: Quality): void { this.quality = quality; this.traffic.limit=TRAFFIC_LIMITS[quality];this.ocean.setQuality(quality); this.environment.setQuality(quality); this.resize(); }
   resize(): void {
     const { width, height } = this.canvas.getBoundingClientRect();
     this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, CONFIG.quality[this.quality].pixelRatio));

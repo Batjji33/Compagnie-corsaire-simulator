@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Traffic,closestApproach,navigable,trafficDensity,TRAFFIC_ROUTES } from '../src/traffic/Traffic.ts';
+import { Traffic,closestApproach,navigable,trafficDensity,TRAFFIC_ROUTES,TRAFFIC_LIMITS,TRAFFIC_TURN_RATE } from '../src/traffic/Traffic.ts';
+import { BOAT } from '../src/ships/parameters.ts';
 import { Passengers } from '../src/passengers/Passengers.ts';
 import { TourGuide,validateComment,DEFAULT_COMMENTS } from '../src/excursions/comments.ts';
 import { MaritimeAudio,readAudio,audioLevels } from '../src/audio/MaritimeAudio.ts';
@@ -18,28 +19,53 @@ test('closest-approach prediction distinguishes crossing, passing clear and movi
   assert.equal(closestApproach(a,{...b,vz:-10}).closing,false);
   assert.ok(Number.isFinite(closestApproach({...a,vz:0},{...b,vz:0}).distance));
 });
-test('traffic has four vessel families and follows safe bounded routes with gradual motion',()=>{
+test('24 vessels in five families follow safe bounded routes with gradual motion',()=>{
   const t=new Traffic(),player=new VesselDynamics({x:4000,z:4000,heading:0});
-  assert.equal(new Set(TRAFFIC_ROUTES.map(r=>r.kind)).size,4);
+  assert.equal(new Set(TRAFFIC_ROUTES.map(r=>r.kind)).size,5);assert.equal(t.agents.length,24);
   const initial=t.agents.map(a=>({x:a.x,z:a.z}));let changedHeading=false;
   for(let i=0;i<120*60;i++){
     const old=t.agents.map(a=>a.heading);t.update(1/60,player.state,14,.4,9000);
     for(const [j,a] of t.agents.entries()){
       assert.ok([a.x,a.z,a.speed,a.heading].every(Number.isFinite));
-      assert.ok(navigable(a.x,a.z,a.route.length*.45),a.route.name);
-      assert.ok(Math.abs(a.heading-old[j])<=.24/60+1e-9);
+      assert.ok(navigable(a.x,a.z,a.route.length/2),a.route.name);
+      assert.ok(Math.abs(a.heading-old[j])<=TRAFFIC_TURN_RATE[a.route.kind]/60+1e-9);
+      assert.ok(a.speed<=a.route.knots*1852/3600+1e-9);
       if(Math.abs(a.heading-old[j])>.0001)changedHeading=true;
     }
   }
   assert.ok(changedHeading);assert.ok(t.agents.every((a,i)=>Math.hypot(a.x-initial[i].x,a.z-initial[i].z)>20));
-  assert.equal(t.agents.filter(a=>a.active).length,8);
+  assert.equal(t.agents.filter(a=>a.active).length,24);
 });
 test('traffic density responds to hour, weather and quality without spawning next to player',()=>{
-  assert.ok(trafficDensity(14,.3,8000)>trafficDensity(2,.3,8000));assert.ok(trafficDensity(14,2.5,2000)<8);
-  const t=new Traffic(),p=new VesselDynamics({x:4000,z:4000,heading:0});t.limit=6;t.update(.016,p.state,14,.3,8000);assert.equal(t.agents.filter(a=>a.active).length,6);
-  t.update(.016,p.state,2,2.5,1500);assert.equal(t.agents.filter(a=>a.active).length,3);
+  assert.equal(trafficDensity(14,.3,8000),24);assert.equal(trafficDensity(2,.3,8000),9);assert.equal(trafficDensity(14,2.5,2000),12);
+  const t=new Traffic(),p=new VesselDynamics({x:4000,z:4000,heading:0});t.limit=TRAFFIC_LIMITS.low;t.update(.016,p.state,14,.3,8000);assert.equal(t.agents.filter(a=>a.active).length,18);
+  t.update(.016,p.state,2,2.5,1500);assert.equal(t.agents.filter(a=>a.active).length,9);
   t.enabled=false;t.update(.016,p.state,14,.3,8000);assert.ok(t.agents.every(a=>!a.active));
   const near=new Traffic(),first=near.agents[0];p.state.x=first.x;p.state.z=first.z;near.update(.016,p.state,14,.3,8000);assert.equal(first.active,false);
+});
+
+test('cargos have 4–5 Corsaire lengths, safe offshore loops and room to spawn',()=>{
+  const cargos=TRAFFIC_ROUTES.filter(r=>r.kind==='cargo');assert.equal(cargos.length,4);
+  for(const r of cargos){
+    assert.ok(r.length/BOAT.length>=4&&r.length/BOAT.length<=5);assert.ok(r.beam>=18&&r.beam<=22);assert.equal(r.loop,true);
+    for(let i=0;i<r.points.length;i++){
+      const p=r.points[i],q=r.points[(i+1)%r.points.length];
+      for(let t=0;t<=1;t+=.02)assert.ok(navigable(p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t,r.length/2),r.id);
+    }
+  }
+  const traffic=new Traffic(),a=traffic.agents.find(a=>a.route.kind==='cargo')!,player=new VesselDynamics({x:a.x+220,z:a.z,heading:0});
+  traffic.update(1/60,player.state,14,.3,9000);assert.equal(a.active,false);
+  const initial=new Traffic();initial.update(1/60,new VesselDynamics().state,14,.3,9000);
+  for(const agent of initial.agents.filter(a=>a.active))assert.ok(Math.hypot(agent.x-BOAT.spawn.x,agent.z-BOAT.spawn.z)>180+(agent.route.length+BOAT.length)/2);
+});
+
+test('large cargo collision capsules include the bow and retain close risk warnings at rest',()=>{
+  const t=new Traffic(),a=t.agents.find(a=>a.route.kind==='cargo')!,b=new VesselDynamics({x:0,z:0,heading:0});
+  Object.assign(a,{active:true,x:0,z:0,heading:0,vx:0,vz:0});
+  b.state.z=-a.route.length/2-BOAT.length/2+2;b.state.surge=-1;
+  const contact=t.contacts(b.state);assert.ok(contact.label);assert.ok(contact.z<0);assert.ok(contact.impact>0);
+  t.detectRisk(b.state);assert.equal(t.risk?.id,a.route.id);
+  b.state.z=-a.route.length;assert.equal(t.contacts(b.state).label,'');
 });
 test('autonomous vessel slows and turns starboard for a predicted close crossing',()=>{
   const t=new Traffic(),boat=new VesselDynamics({x:0,z:0,heading:0});boat.state.surge=5;

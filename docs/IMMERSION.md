@@ -2,8 +2,8 @@
 
 ## Trafic autonome
 
-Le trafic comprend deux voiliers, deux bateaux de plaisance, deux ferries et deux
-vedettes. Chaque définition de `src/traffic/Traffic.ts` possède une route en mètres,
+Le trafic comprend cinq voiliers, cinq bateaux de plaisance, cinq ferries, cinq
+vedettes et quatre cargos, soit 24 navires. Chaque définition de `src/traffic/Traffic.ts` possède une route en mètres,
 un nom, une famille, des dimensions et une vitesse. Les navires suivent des trajets
 dans l'avant-port, au centre de la baie, près de Dinard et au large des forts.
 Ils tournent progressivement, ralentissent dans les croisements et choisissent un
@@ -11,11 +11,22 @@ Ils tournent progressivement, ralentissent dans les croisements et choisissent u
 Une vérification du littoral, des quais et des rochers empêche les trajets sur terre.
 Les comportements sont des règles de jeu, sans valeur de règlement maritime réel.
 
-Le profil léger limite le trafic à six navires ; les autres profils en autorisent
-huit. La nuit en conserve trois ; la mer agitée ou une visibilité réduite diminuent
-le trafic et les vitesses. Les suppressions se font loin du joueur et les nouvelles
-activations à plus de 180 m pour éviter les apparitions à proximité immédiate.
+Le profil léger limite le trafic à 18 navires ; les autres profils en autorisent
+24, soit trois fois les limites précédentes. La nuit et le brouillard en conservent
+neuf, la mer agitée douze, soit également trois fois les anciennes densités.
+La météo diminue aussi les vitesses. Les suppressions se font loin du joueur et les nouvelles
+activations gardent 180 m plus les demi-longueurs du joueur et du navire autonome.
+Une séparation supplémentaire entre navires actifs empêche les activations superposées.
 Les navires proches sont conservés temporairement lors d'une baisse de densité.
+
+Les cargos mesurent 108, 120, 126 et 130 m, pour 18 à 22 m de large, avec une coque
+haute, une passerelle arrière, une cheminée et des rangées de conteneurs. Leur vitesse
+nominale varie de 7,5 à 9 nd. Ils suivent de larges circuits fermés au large des forts,
+avec une rotation limitée à environ 1,43°/s et une réponse en vitesse sur dix secondes.
+Les navires ralentissent dans les virages ; les marges d’évitement tiennent compte
+des longueurs des deux coques et les cargos anticipent les croisements sur 55 secondes.
+Le contrôle du littoral utilise une marge d’une demi-longueur et les limites de la baie.
+Les capsules de collision couvrent également les extrémités des grandes coques.
 
 La prévision de rapprochement compare les vitesses relatives sur 35 secondes. Elle
 déclenche un avertissement visuel et, si le son est activé, un avertissement sonore.
@@ -86,20 +97,26 @@ et les identifiants des commentaires déjà proposés pour la mission active. Le
 anciennes sauvegardes sans ces champs restent lisibles. Le trafic est recréé à la
 reprise avec la règle d'éloignement initial ; il n'est pas sauvegardé individuellement.
 
-Le trafic compte au plus huit agents. Les décisions de route sont calculées à 10 Hz
+Le trafic compte au plus 24 agents. Les décisions de route sont calculées à 10 Hz
 près du joueur et 2 Hz au loin ; les positions sont intégrées au pas physique fixe.
-Au-delà de 1 100 m de la caméra, la superstructure disparaît. Les foules sont mises
+Les volumes côtiers sont filtrés par leurs bornes avant les tests polygonaux.
+Chaque silhouette complète (coque, voile ou passerelle et conteneurs) est fusionnée
+en un seul maillage avec couleurs par sommet. Un second maillage de détails est
+masqué au-delà de 900 m (1 800 m pour les cargos), en conservant la silhouette.
+Les petits navires sont masqués au-delà de 3 km et les cargos au-delà de 6 km.
+Les foules sont mises
 à jour à 5 Hz, le radar et les affichages à 5 Hz, sans ajout de dépendance npm.
-Dans le cadrage externe initial à 1 024 × 768, Chromium en profil léger a mesuré
-92 appels de dessin et 75 264 triangles avec six navires actifs et 48 passagers,
-contre 87 appels et 74 164 triangles avec le trafic et la foule masqués. Le coût
+Dans un cadrage large de la baie à 1 024 × 768, Chromium en profil léger a mesuré
+107 appels de dessin et 69 325 triangles avec 18 navires actifs, contre
+97 appels et 68 330 triangles avec le trafic masqué, à caméra identique. Le coût
 dépend du cadrage et des objets visibles ; ces chiffres ne garantissent pas une
-cadence sur iPad. Le signal Web Audio a également été mesuré, puis sa suspension
-en pause vérifiée.
+cadence sur iPad. Les captures et le rapport se trouvent dans `.qa/naval-*`.
 
 Les tests couvrent trajectoires, virages, densité, prédiction des croisements,
 contacts et dégâts, indépendance du rendu, passagers, confort, annonces, validation
 des textes et mode sans voix française. Les essais navigateur vérifient également
 la 3D, les positions radar, l'édition persistante et les formats ordinateur/iPad.
+Une simulation de 20 minutes des 24 agents conserve tous les navires en eau libre
+et fait parcourir tous les points de leurs circuits aux quatre cargos.
 La validation matérielle Safari/iPadOS reste distincte de l'émulation Chromium.
 La phase 6 n'est pas commencée.
