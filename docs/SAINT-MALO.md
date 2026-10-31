@@ -1,5 +1,7 @@
 # Corsaire de Saint-Malo
 
+La vitesse de jeu est désormais de **19,5 nœuds**, à la demande du joueur. La valeur réelle de référence reste 12 nœuds. Ce réglage remplace le calibrage initial décrit ci-dessous : vitesse de pointe, traînée et limite de vitesse sont adaptées ensemble. Les nouveaux services retrouvent un créneau de 6 minutes ; les services sauvegardés conservent leur ancien créneau.
+
 Choisir **Navigation libre** ou **Missions et excursions**, puis **Navire → Corsaire de Saint-Malo**. Le Corsaire d’Émeraude garde son modèle et ses réglages. Le choix est conservé localement ; une mission sauvegardée restaure son propre navire. Les anciennes sauvegardes sans identifiant reprennent avec l’Émeraude.
 
 ## Références consultées
