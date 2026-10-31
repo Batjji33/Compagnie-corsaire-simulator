@@ -9,12 +9,12 @@ import { FerryService, serviceDefinition, validService } from '../src/missions/F
 import { MISSIONS } from '../src/missions/definitions.ts';
 import { vesselMission } from '../src/missions/vesselMission.ts';
 
-test('Saint-Malo reaches 12 knots gradually and remains capped under following external force',()=>{
+test('Saint-Malo reaches 19.5 knots gradually and remains capped under following external force',()=>{
   const v=new VesselDynamics({x:0,z:-1000,heading:0});v.parameters=SAINT_MALO;v.setCommand({port:1,starboard:1});
   v.step(1/60);assert.ok(v.state.surge>0&&v.state.surge<.01);
   for(let i=0;i<180*60;i++)v.step(1/60);
-  assert.ok(v.state.surge/KNOT>11.9&&v.state.surge/KNOT<=12);
-  for(let i=0;i<10*60;i++){v.step(1/60,{x:40000,z:-60000,yaw:0});assert.ok(Math.hypot(v.state.surge,v.state.sway)/KNOT<=12+1e-9);}
+  assert.ok(v.state.surge/KNOT>19.4&&v.state.surge/KNOT<=19.5);
+  for(let i=0;i<10*60;i++){v.step(1/60,{x:40000,z:-60000,yaw:0});assert.ok(Math.hypot(v.state.surge,v.state.sway)/KNOT<=19.5+1e-9);}
   v.setCommand({port:0,starboard:0});const speed=v.state.surge;v.step(1/60);assert.ok(v.state.surge>speed*.98);
   assert.equal(new VesselDynamics().parameters,BOAT);assert.equal(BOAT.maxSpeedKnots,19.5);
 });
@@ -34,10 +34,10 @@ test('contacts and under-keel clearance use the selected hull dimensions',()=>{
   assert.ok(b.clearance-a.clearance>.2);
 });
 
-test('all missions and subsequent service legs respect 245 passengers and 12 knots',()=>{
-  for(const authored of MISSIONS){const d=vesselMission(authored,SAINT_MALO);assert.ok(d.passengers<=245&&d.cruiseKnots<=12);assert.ok(d.targetSeconds>=authored.targetSeconds);assert.equal(d.route,authored.route);}
-  for(let leg=0;leg<20;leg++){const d=serviceDefinition(leg,SAINT_MALO);assert.ok(d.passengers<=245);assert.equal(d.cruiseKnots,12);assert.match(d.comments.crossing,/12 nd/);}
+test('all missions and subsequent service legs respect 245 passengers and the faster ship profile',()=>{
+  for(const authored of MISSIONS){const d=vesselMission(authored,SAINT_MALO);assert.ok(d.passengers<=245&&d.cruiseKnots<=19.5);assert.ok(d.targetSeconds>=authored.targetSeconds);assert.equal(d.route,authored.route);}
+  for(let leg=0;leg<20;leg++){const d=serviceDefinition(leg,SAINT_MALO);assert.ok(d.passengers<=245);assert.equal(d.cruiseKnots,17);assert.match(d.comments.crossing,/17 nd/);}
   const service=new FerryService(undefined,undefined,SAINT_MALO);const resumed=new FerryService(service.state,service.mission.state,SAINT_MALO);assert.deepEqual(resumed.mission.definition,service.mission.definition);
-  assert.equal(service.crossingSeconds,510);assert.equal(resumed.crossingSeconds,510);assert.ok(validService(service.state));assert.equal(new FerryService().crossingSeconds,360);
+  assert.equal(service.crossingSeconds,360);assert.equal(resumed.crossingSeconds,360);assert.ok(validService(service.state));assert.equal(new FerryService().crossingSeconds,360);
   const p=new Passengers();p.capacity=245;p.update(0,'departure',0,500,18,12,0,0,0);assert.equal(p.count,245);
 });

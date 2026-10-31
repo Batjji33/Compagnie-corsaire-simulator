@@ -18,8 +18,10 @@ export const BOAT = {
 /** Widen numeric literals so each vessel owns its calibration. BOAT remains the legacy default. */
 type Widen<T> = { -readonly [P in keyof T]: T[P] extends number ? number : Widen<T[P]> };
 export type BoatParameters = Widen<typeof BOAT> & {catamaran?:boolean;speedLimitKnots?:number};
+// Gameplay override requested for faster crossings; the published vessel speed is 12 knots.
+const SAINT_MALO_SPEED=19.5;
 export const SAINT_MALO: BoatParameters = {
-  ...BOAT, catamaran:true, speedLimitKnots:12, length:24, beam:7.8, draft:1.65, passengers:245, maxSpeedKnots:12,
+  ...BOAT, catamaran:true, speedLimitKnots:SAINT_MALO_SPEED, length:24, beam:7.8, draft:1.65, passengers:245, maxSpeedKnots:SAINT_MALO_SPEED,
   mass:62000, yawInertia:5_200_000, engineThrust:18000, engineArm:2.8,
   engineResponse:1.5, swayLinearDrag:32000, swayQuadraticDrag:24000,
   yawLinearDrag:1_100_000, yawQuadraticDrag:4_800_000, rudderArm:8.5,
