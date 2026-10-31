@@ -3,7 +3,6 @@ import { ROUTE } from '../world/geography.ts';
 import type { SeaState } from '../weather/Marine.ts';
 import type { DockingRules } from './docking.ts';
 import { EXCURSIONS } from './excursions.ts';
-import { MISSION_SECONDS } from './timing.ts';
 
 export interface Pose { x:number; z:number; heading:number }
 export interface Waypoint extends Omit<Pose,'heading'> {
@@ -18,7 +17,7 @@ export interface MissionDefinition {
   excursion?:{source:string;reference:string;adaptation?:string};
   passengers:number; boardingSeconds:number; unloadingSeconds:number;
   departureHour:number; sea:SeaState; windDirection:number;
-  targetSeconds:number; cruiseKnots:number;
+  targetSeconds:number; maxSeconds:number; cruiseKnots:number;
   rules:{departureKnots:number;approachKnots:number;maxGroundedSeconds:number;maxDamage:number};
   docking?:DockingRules;
   comments:Record<MissionPhase,string>;
@@ -31,7 +30,7 @@ export const MALO_DINARD:MissionDefinition={
     approach:{x:-945,z:1240,heading:0},approachRadius:220,dockingRadius:95},
   route:ROUTE.slice(1).map((p,i)=>({x:p[0],z:p[1],label:['Sortie du port','Milieu de baie','Cap sur Dinard','Réduire la vitesse','Clair de Lune'][i]})),
   passengers:180,boardingSeconds:18,unloadingSeconds:12,departureHour:14,sea:'belle',windDirection:250,
-  targetSeconds:MISSION_SECONDS.dinard,cruiseKnots:17,
+  targetSeconds:360,maxSeconds:1200,cruiseKnots:17,
   rules:{departureKnots:4,approachKnots:5,maxGroundedSeconds:15,maxDamage:.85},
   comments:{
     preparation:'Consultez le trajet et les conditions avant de commencer l’embarquement.',
