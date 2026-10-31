@@ -19,6 +19,9 @@ import { Immersion } from './Immersion';
 import { icon } from './icons';
 import { formatHour } from '../core/time';
 import type { PortId } from '../traffic/Berths';
+import { TIME_RATES } from '../core/TimeAcceleration';
+import type { TimeAcceleration } from '../core/TimeAcceleration';
+import { accelerationDanger } from '../core/navigationSafety';
 
 const names:Record<MissionPhase,string>={preparation:'Préparation',boarding:'Embarquement',departure:'Départ',crossing:'Traversée',approach:'Approche',docking:'Accostage',unloading:'Débarquement',complete:'Bilan',failed:'Mission interrompue'};
 const clock=(seconds:number)=>`${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
@@ -41,7 +44,11 @@ export class Game {
   private settingsPanel:HTMLElement;
   private previousFree:{x:number;z:number}|undefined;
   private immersion:Immersion;
-  constructor(private world:World,private helm:HelmControls,private ui:Interface,private marinePanel:MarinePanel,private store:GameStore,private pauseLoop:(paused:boolean)=>void){
+  private timeButton=document.createElement('button');
+  private timeNotice=document.createElement('p');
+  private noticeRemaining=0;
+  private safetyTimer=0;
+  constructor(private world:World,private helm:HelmControls,private ui:Interface,private marinePanel:MarinePanel,private store:GameStore,private pauseLoop:(paused:boolean)=>void,private acceleration:TimeAcceleration){
     const options={signal:this.abort.signal};
     this.settingsPanel=document.querySelector('#settings')!;
     this.dialog.id='game-menu';this.dialog.setAttribute('aria-labelledby','game-menu-title');
@@ -54,6 +61,19 @@ export class Game {
     this.hud.id='mission-hud';this.hud.hidden=true;this.hud.setAttribute('aria-label','Objectif de mission');
     this.hud.innerHTML='<div class="objective-top"><strong id="objective-phase"></strong><span class="objective-summary"><span id="objective-time"></span><span id="objective-clock" aria-label="Heure de bord"></span></span></div><p id="objective-guidance"></p><div class="objective-actions"><button id="mission-action"></button><button id="mission-skip" hidden>Passer l’attente</button><button id="mission-details" aria-expanded="false" aria-controls="objective-details">Journal de bord</button></div><div id="objective-details" hidden><p id="objective-count" hidden></p><p id="objective-schedule" hidden></p><p id="objective-comment"></p><ol id="objective-steps"></ol><button id="service-end" hidden>Terminer le service</button></div>';
     document.querySelector('.voyage-overlays')!.append(this.hud);
+    this.timeButton.id='mission-time-rate';this.timeButton.type='button';
+    this.timeButton.setAttribute('aria-live','polite');
+    this.hud.querySelector('.objective-actions')!.append(this.timeButton);
+    this.timeNotice.id='mission-time-notice';this.timeNotice.hidden=true;this.timeNotice.setAttribute('role','status');
+    this.hud.append(this.timeNotice);this.syncTimeButton();
+    this.timeButton.addEventListener('click',()=>{
+      if(this.paused)return;
+      const next=TIME_RATES[(TIME_RATES.indexOf(this.acceleration.multiplier)+1)%TIME_RATES.length];
+      const danger=next===1?undefined:this.timeDanger();
+      if(!this.acceleration.select(next,danger))this.showTimeNotice(danger!);
+      else {this.timeNotice.hidden=true;this.noticeRemaining=0;}
+      this.safetyTimer=0;this.syncTimeButton();
+    },options);
     this.hud.querySelector('#mission-action')!.addEventListener('click',()=>this.action(),options);
     this.hud.querySelector('#mission-skip')!.addEventListener('click',()=>this.skipWait(),options);
     this.hud.querySelector('#service-end')!.addEventListener('click',()=>this.show('end-service'),options);
@@ -103,6 +123,7 @@ export class Game {
     this.marinePanel.syncSettings();
   }
   private setPaused(value:boolean):void {
+    if(value){this.acceleration.reset();this.syncTimeButton();}
     this.paused=value;this.pauseLoop(value);this.helm.clearKeys();this.helm.setEnabled(!value&&!this.world.vessel.moored);
     this.ui.pause.innerHTML=`${icon('pause')}<span>${value?'Reprendre':'Pause'}</span>`;this.ui.pause.setAttribute('aria-pressed',String(value));
     this.ui.pause.setAttribute('aria-label',value?'Reprendre la navigation':'Mettre en pause');
@@ -227,6 +248,7 @@ export class Game {
     this.resetView();this.setMissionRoute();this.updatePassengers(0);this.show('briefing');
   }
   private resetView():void {
+    this.acceleration.reset();this.safetyTimer=0;this.noticeRemaining=0;this.timeNotice.hidden=true;this.syncTimeButton();
     this.world.resetWaterEffects();
     Object.assign(this.world.vessel.visual,this.world.vessel.dynamics.state);this.world.setCameraMode('external');this.ui.setShipView();this.helm.refresh();
     this.previousFree=undefined;
@@ -322,8 +344,28 @@ export class Game {
   private berthAvailable():boolean {
     const port=this.arrivalPort();return !port||!this.world.traffic.enabled||this.world.traffic.taxis.berths.availableToPlayer(port);
   }
+  private timeDanger():string|undefined {
+    const v=this.world.vessel;
+    return accelerationDanger({state:v.dynamics.state,boat:v.parameters,shore:v.contact,marine:v.marine,traffic:this.world.traffic,
+      mission:this.mode==='mission'?this.mission:undefined,actionPending:this.immersion.guide.actionPending});
+  }
+  private syncTimeButton():void {
+    const rate=this.acceleration.multiplier;
+    this.timeButton.textContent=`Temps ×${rate}`;
+    this.timeButton.setAttribute('aria-label',`Vitesse du temps : ×${rate}. Passer à ×${TIME_RATES[(TIME_RATES.indexOf(rate)+1)%TIME_RATES.length]}`);
+    this.timeButton.title='Vitesse du temps : ×1, ×2, ×4, ×8. Retour automatique à ×1 en cas de danger.';
+    this.timeButton.setAttribute('data-accelerated',String(rate>1));
+  }
+  private showTimeNotice(reason:string):void {
+    this.timeNotice.textContent=`Accélération désactivée — ${reason}`;this.timeNotice.hidden=false;this.noticeRemaining=5;
+  }
+  private enforceTimeSafety(reason?:string):void {
+    if(this.acceleration.enforce(reason)){this.showTimeNotice(reason!);this.syncTimeButton();}
+  }
   update(dt:number):void {
     if(this.paused)return;
+    this.safetyTimer-=dt;
+    if(this.acceleration.multiplier>1&&this.safetyTimer<=1e-8){this.enforceTimeSafety(this.timeDanger());this.safetyTimer=.1;}
     const v=this.world.vessel;
     this.syncMissionClock();
     v.moored=this.mode==='mission'&&!!this.mission?.moored;
@@ -331,12 +373,13 @@ export class Game {
     this.helm.setEnabled(!v.moored);this.helm.update(dt);this.world.update(dt);
     if(this.mode==='mission'&&this.mission){
       if(this.world.passengers.count>0)this.mission.state.metrics.discomfort+=Math.max(0,v.marine.waves-.5)*dt*.025;
-      const previous=this.mission,phase=previous.phase;
+      const previous=this.mission,phase=previous.phase,visited=previous.state.visited.length;
       if(this.service){
         const arrived=this.service.update(dt,this.telemetry(),this.world.passengers.satisfaction);
         this.syncServiceMission(arrived);
         if(previous===this.mission&&phase==='boarding'&&this.mission.phase==='departure')this.immersion.announce(`Embarquement terminé. Départ autorisé pour ${this.service.destinationName}.`);
       }else this.mission.update(dt,this.telemetry());
+      if(previous!==this.mission||phase!==this.mission.phase||visited!==this.mission.state.visited.length)this.enforceTimeSafety('étape de mission');
       if(this.mission.definition.excursion){
         const next=this.mission.waypoint;
         if(next?.comment&&Math.hypot(v.dynamics.state.x-next.x,v.dynamics.state.z-next.z)<(next.radius??130)){
@@ -362,9 +405,11 @@ export class Game {
       this.previousFree={x:s.x,z:s.z};
     }
     this.immersion.update(dt);
+    if(this.immersion.guide.actionPending)this.enforceTimeSafety('action du joueur requise');
     this.autosave+=dt;if(this.autosave>=10){this.autosave=0;this.snapshot();}
   }
   render(dt:number):void {
+    if(this.noticeRemaining>0){this.noticeRemaining=Math.max(0,this.noticeRemaining-dt);if(!this.noticeRemaining)this.timeNotice.hidden=true;}
     this.renderTimer+=dt;if(this.renderTimer<.2)return;this.renderTimer=0;
     if(!this.paused){
       const status=this.mode==='mission'&&this.mission?`${this.service&&this.mission.phase==='unloading'?'En escale':names[this.mission.phase]} · ${this.mission.definition.title}`:'Navigation libre · Deux moteurs';

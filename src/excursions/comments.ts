@@ -23,6 +23,7 @@ export class TourGuide {
   comments:TourComment[]=structuredClone(DEFAULT_COMMENTS);selected:TourComment|undefined;
   visited=new Set<string>();automatic=true;manual=true;muted=false;private cooldown=0;
   private selectedSeconds=0;private acknowledged=false;
+  get actionPending():boolean {return !this.muted&&this.manual&&!!this.selected&&!this.acknowledged;}
   destination:'malo'|'dinard'|undefined;
   private contextual(comment:TourComment):TourComment {
     // Leave custom and edited comments intact; only adapt the authored directional introductions.

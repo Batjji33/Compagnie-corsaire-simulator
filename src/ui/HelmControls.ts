@@ -24,7 +24,7 @@ export class HelmControls {
   private repeats = new Map<number, ReturnType<typeof setTimeout>>();
   private panel: HTMLElement;
   private help: HTMLDetailsElement;
-  private elapsed = 0;
+  private renderElapsed = 0;
   constructor(private dynamics: VesselDynamics, private camera: (mode: CameraMode)=>void, private mode: ()=>CameraMode) {
     this.panel = document.createElement('section');
     this.panel.className = 'helm';
@@ -116,7 +116,10 @@ export class HelmControls {
       const direction=clamp(Number(this.keys.has('arrowright'))-Number(this.keys.has('arrowleft'))+[...this.steering.values()].reduce((a,b)=>a+b,0),-1,1);
       if(direction)this.dynamics.setCommand({rudder:this.dynamics.command.rudder+direction*dt*.65});
     } else this.clearKeys();
-    this.elapsed+=dt;if(this.elapsed>.1){this.elapsed=0;this.refresh();}
+  }
+  render(dt:number):void {
+    this.renderElapsed+=dt;
+    if(this.renderElapsed>=.1){this.renderElapsed=0;this.refresh();}
   }
   refresh(): void {
     const c=this.dynamics.command,s=this.dynamics.state;
