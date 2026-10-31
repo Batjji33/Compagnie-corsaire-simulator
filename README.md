@@ -8,7 +8,7 @@ La phase 5 ajoute voiliers, plaisance, ferries et vedettes avec évitements et �
 radar, une foule 3D instanciée suivant les étapes de mission, la satisfaction des
 passagers et sept commentaires français éditables. **Excursion** ouvre le panneau
 de commentaires et de volumes, **Son : non / oui** active l'ambiance procédurale.
-Le texte reste disponible sans voix française. Voir [le guide d'immersion](docs/IMMERSION.md)
+Le texte demeure disponible sans voix française. Voir [le guide d'immersion](docs/IMMERSION.md)
 et [les crédits audio et touristiques](public/assets/AUDIO-CREDITS.md).
 
 ## Démarrer
