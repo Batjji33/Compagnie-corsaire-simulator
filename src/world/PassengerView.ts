@@ -5,7 +5,7 @@ import type { Passengers } from '../passengers/Passengers';
 import type { Vessel } from '../ships/Vessel';
 
 const MAX_PEOPLE=40;
-function bodyGeometry(){
+export function passengerBodyGeometry(){
   const parts=[new CylinderGeometry(.2,.23,.75,5).translate(0,.73,0),...[-1,1].flatMap(side=>[new BoxGeometry(.14,.4,.18).translate(side*.1,.2,0),new BoxGeometry(.12,.6,.14).translate(side*.28,.7,0)])];
   const normalized=parts.map(p=>{const n=p.toNonIndexed();p.dispose();return n;});const merged=mergeGeometries(normalized)!;normalized.forEach(g=>g.dispose());return merged;
 }
@@ -13,7 +13,7 @@ function bodyGeometry(){
 export class PassengerView {
   readonly quay=new Group();
   private deck=new Group();
-  private bodyGeometry=bodyGeometry();
+  private bodyGeometry=passengerBodyGeometry();
   private headGeometry=new SphereGeometry(.17,6,4).translate(0,1.28,0);
   private bodyMaterial=new MeshStandardMaterial({color:0xffffff,roughness:1});
   private headMaterial=new MeshStandardMaterial({color:0xd4ae8e,roughness:1});

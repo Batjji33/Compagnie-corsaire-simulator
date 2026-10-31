@@ -5,10 +5,11 @@ import type { Traffic, TrafficAgent } from '../traffic/Traffic';
 import type { WaveField } from '../weather/Waves';
 import { CorsaireModel } from '../ships/CorsaireModel';
 import { TAXI_LIVERIES } from '../traffic/WaterTaxis';
+import { TaxiPassengerView } from './TaxiPassengerView';
 
 export class TrafficView {
   readonly root=new Group();
-  private boats:{root:Group;details:Group;agent:TrafficAgent}[]=[];
+  private boats:{root:Group;details:Group;agent:TrafficAgent;passengers?:TaxiPassengerView}[]=[];
   private geometries=new Set<BufferGeometry>();
   private material=new MeshStandardMaterial({vertexColors:true,roughness:.8,side:DoubleSide});
   private flotation={heave:0,pitch:0,roll:0};
@@ -76,17 +77,21 @@ export class TrafficView {
         const merged=mergeGeometries(geometries)!;geometries.forEach(g=>g.dispose());this.geometries.add(merged);parent.add(new Mesh(merged,this.material));
       };
       merge(parts,root);merge(fine,details);
-      root.add(details);root.name=a.route.name;this.root.add(root);this.boats.push({root,details,agent:a});
+      const passengers=a.taxi?new TaxiPassengerView(a,root):undefined;
+      if(passengers){details.add(passengers.deck);this.root.add(passengers.quay);}
+      root.add(details);root.name=a.route.name;this.root.add(root);this.boats.push({root,details,agent:a,passengers});
     }
     template.dispose();
   }
-  render(tide:number,_time:number,camera:{x:number;z:number},water:WaveField,offset:number):void {
+  render(tide:number,time:number,camera:{x:number;z:number},water:WaveField,offset:number):void {
     for(const b of this.boats){const a=b.agent,cargo=a.route.kind==='cargo',distance=Math.hypot(a.x-camera.x,a.z-camera.z);
-      b.root.visible=a.active&&distance<(cargo||a.taxi?6000:3000);if(!b.root.visible)continue;
+      b.root.visible=a.active&&distance<(cargo||a.taxi?6000:3000);
+      if(!b.root.visible){b.passengers?.render(time,false);continue;}
       if(distance<1500){water.hull(a.x,a.z,a.heading,a.route.length,a.route.beam,offset,this.flotation);b.root.position.set(a.x,tide+this.flotation.heave,a.z);b.root.rotation.set(this.flotation.pitch,-a.heading,this.flotation.roll,'YXZ');}
       else {b.root.position.set(a.x,tide+water.height(a.x,a.z,offset),a.z);b.root.rotation.set(0,-a.heading,0);}
       b.details.visible=distance<(cargo?1800:900);
+      b.passengers?.render(time,distance<600);
     }
   }
-  dispose():void {this.root.removeFromParent();this.geometries.forEach(g=>g.dispose());this.taxiResources.forEach(r=>r.dispose());this.material.dispose();}
+  dispose():void {this.root.removeFromParent();this.boats.forEach(b=>b.passengers?.dispose());this.geometries.forEach(g=>g.dispose());this.taxiResources.forEach(r=>r.dispose());this.material.dispose();}
 }

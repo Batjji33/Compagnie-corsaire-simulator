@@ -17,10 +17,13 @@ export const TAXI_LIVERIES=[
 // Opposite sailing lanes have 90 m separation; the final manoeuvre is reserved separately.
 const OUTBOUND=[[720,485],[300,695],[-200,895],[-650,1075],[-820,1300]];
 const INBOUND=[[-650,985],[-200,805],[300,605],[650,430],[780,370]];
-export const TAXI_ROUTES:TrafficRoute[]=TAXI_LIVERIES.map((v,i)=>({id:`taxi-${i+1}`,name:v.name,kind:'ferry',taxi:true,knots:17,length:BOAT.length,beam:BOAT.beam,points:(i===1?INBOUND:OUTBOUND) as [number,number][]}));
+export const TAXI_CRUISE_KNOTS=20;
+export const TAXI_STOPOVER_SECONDS=90;
+export const TAXI_UNLOADING_SECONDS=12;
+export const TAXI_BOARDING_SECONDS=18;
+export const TAXI_ROUTES:TrafficRoute[]=TAXI_LIVERIES.map((v,i)=>({id:`taxi-${i+1}`,name:v.name,kind:'ferry',taxi:true,knots:TAXI_CRUISE_KNOTS,length:BOAT.length,beam:BOAT.beam,points:(i===1?INBOUND:OUTBOUND) as [number,number][]}));
 const taxiLoad=(index:number,rotations:number)=>140+(index*41+rotations*29)%121;
 export function taxiState(index:number):TaxiState {return {phase:'crossing',destination:index===1?'malo':'dinard',point:index===0?3:index===1?1:0,elapsed:0,rotations:0,waitingForPlayer:0,nextHorn:30,passengers:taxiLoad(index,0),transported:0,astern:false};}
-export const taxiDwell=(index:number,rotations:number):number=>60+(index*23+rotations*17)%61;
 const angle=(r:number)=>Math.atan2(Math.sin(r),Math.cos(r));
 
 /** Uses the existing traffic agents: no extra render loop, collision list or hidden fleet. */
@@ -40,16 +43,16 @@ export class WaterTaxis {
       const s=a.taxi!,port=TAXI_PORTS[s.destination],id=a.route.id;
       s.elapsed+=dt;
       const route=s.destination==='dinard'?OUTBOUND:INBOUND;
-      let target={x:route[Math.min(s.point,route.length-1)][0],z:route[Math.min(s.point,route.length-1)][1]},knots=17,stop=false;
+      let target={x:route[Math.min(s.point,route.length-1)][0],z:route[Math.min(s.point,route.length-1)][1]},knots=TAXI_CRUISE_KNOTS,stop=false;
       if(s.phase==='crossing'){
         if(Math.hypot(a.x-target.x,a.z-target.z)<40){s.point++;if(s.point>=route.length){s.phase='approach';s.elapsed=0;}}
-        if(Math.hypot(a.x-port.berth.x,a.z-port.berth.z)<430){s.phase='approach';s.elapsed=0;}
+        if(Math.hypot(a.x-port.berth.x,a.z-port.berth.z)<(s.destination==='dinard'?250:350)){s.phase='approach';s.elapsed=0;}
       }
       if(s.phase==='approach'||s.phase==='waiting'){
         const granted=this.berths.request(s.destination,id);
         s.phase=granted?'approach':'waiting';
         if(granted){
-          target=port.approach;knots=4;stop=true;
+          target=port.approach;knots=12;stop=true;
           if(Math.hypot(a.x-target.x,a.z-target.z)<4&&a.speed<.4){s.phase='docking';s.elapsed=0;s.point=s.destination==='malo'?0:1;}
         }else{
           const position=Math.max(0,this.berths.ports[s.destination].queue.indexOf(id));
@@ -60,7 +63,7 @@ export class WaterTaxis {
         // An unexpected player intrusion revokes permission to advance, without changing position.
         if(this.berths.ports[s.destination].playerPresent){knots=0;target={x:a.x,z:a.z};stop=true;}
         else{
-          target=s.destination==='malo'&&s.point===0?{x:850,z:264}:port.berth;knots=1.4;stop=true;
+          target=s.destination==='malo'&&s.point===0?{x:850,z:264}:port.berth;knots=6;stop=true;
           if(Math.hypot(a.x-target.x,a.z-target.z)<1.2&&a.speed<.16){
             if(s.point===0)s.point=1;
             else if(this.berths.occupy(s.destination,id)){s.phase='stopover';s.elapsed=0;}
@@ -69,13 +72,15 @@ export class WaterTaxis {
       }
       if(s.phase==='stopover'){
         knots=0;target={x:a.x,z:a.z};stop=true;
-        s.passengers=s.elapsed<12?Math.round(taxiLoad(index,s.rotations)*(1-s.elapsed/12)):Math.round(taxiLoad(index,s.rotations+1)*Math.min(1,(s.elapsed-12)/18));
-        if(s.elapsed>=taxiDwell(index,s.rotations)){s.transported+=taxiLoad(index,s.rotations);s.phase='departure';s.elapsed=0;s.astern=true;s.point=s.destination==='malo'?0:1;}
+        const load=taxiLoad(index,s.rotations),unloaded=Math.floor(load*clamp(s.elapsed/TAXI_UNLOADING_SECONDS,0,1));
+        s.transported+=unloaded-Math.floor(load*clamp((s.elapsed-dt)/TAXI_UNLOADING_SECONDS,0,1));
+        s.passengers=s.elapsed<TAXI_UNLOADING_SECONDS?load-unloaded:Math.floor(taxiLoad(index,s.rotations+1)*clamp((s.elapsed-TAXI_UNLOADING_SECONDS)/TAXI_BOARDING_SECONDS,0,1));
+        if(s.elapsed+1e-7>=TAXI_STOPOVER_SECONDS){s.phase='departure';s.elapsed=0;s.astern=true;s.point=s.destination==='malo'?0:1;}
       }
       if(s.phase==='departure'){
         const escape=s.destination==='malo'?OUTBOUND[0]:INBOUND[0];
-        target=s.point===0?{x:850,z:264}:s.point===1?port.approach:{x:escape[0],z:escape[1]};knots=s.point<2?2:4;stop=true;
-        if(Math.hypot(a.x-target.x,a.z-target.z)<4&&a.speed<.35){
+        target=s.point===0?{x:850,z:264}:s.point===1?port.approach:{x:escape[0],z:escape[1]};knots=s.point<2?(s.destination==='malo'?8:6):12;stop=s.point<2;
+        if(Math.hypot(a.x-target.x,a.z-target.z)<(stop?4:20)&&(!stop||a.speed<.35)){
           if(s.point<2){s.point++;if(s.point===2)s.astern=false;}
           else{this.berths.release(s.destination,id);s.destination=s.destination==='malo'?'dinard':'malo';s.phase='crossing';s.point=1;s.rotations++;s.astern=false;s.elapsed=0;}
         }
@@ -97,7 +102,7 @@ export class WaterTaxis {
     const s=a.taxi!,distance=Math.hypot(target.x-a.x,target.z-a.z),reverse=s.astern?-1:1;
     let moveDistance=distance;
     let heading=distance>.3?Math.atan2(target.x-a.x,-(target.z-a.z))+(s.astern?Math.PI:0):a.heading;
-    let speed=knots*KNOT*Math.max(.5,1-waves*.1)*(visibility<1800?.6:1);
+    let speed=knots*KNOT*Math.max(.5,1-Math.max(0,waves-.6)*.1)*(visibility<1800?.6:1);
     if(stop)speed=Math.min(speed,Math.sqrt(2*.4*Math.max(0,distance-.35)));
     a.avoiding=false;
     const pv={x:player.x,z:player.z,vx:Math.sin(player.heading)*player.surge+Math.cos(player.heading)*player.sway,vz:-Math.cos(player.heading)*player.surge+Math.sin(player.heading)*player.sway};
@@ -119,7 +124,7 @@ export class WaterTaxis {
     }
     const delta=angle(heading-a.heading);a.desiredHeading=heading;a.desiredSpeed=speed;
     a.heading+=clamp(delta,-.1*dt,.1*dt);
-    speed*=Math.max(.12,Math.cos(delta));
+    speed*=Math.max(0,Math.cos(delta));
     a.speed+=clamp(speed-a.speed,-.65*dt,.4*dt);
     const step=Math.min(a.speed*dt,moveDistance),vx=Math.sin(a.heading)*reverse*step/dt,vz=-Math.cos(a.heading)*reverse*step/dt;
     const x=a.x+vx*dt,z=a.z+vz*dt;
