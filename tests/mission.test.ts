@@ -69,11 +69,11 @@ test('safety, comfort, manoeuvres and lateness affect the actual score',()=>{
   m.state.elapsed=480;m.state.metrics.recoveries=1;
   const result=m.makeResult(true,'test');assert.ok(result.safety<100);assert.ok(result.comfort<100);assert.equal(result.punctuality,60);assert.ok(result.manoeuvres<100);assert.ok(result.score<80);
 });
-test('damage, prolonged grounding, leaving the bay and time limit cause explicit failures',()=>{
+test('damage, prolonged grounding and leaving the bay cause explicit failures; lateness does not',()=>{
   for(const [t,seconds,reason] of [[sample({damage:.9}),1,/Coque/],[sample({clearance:-1}),16,/Échouement/],[sample({x:6000}),1,/zone de jeu/]] as const){
     const m=departed();tick(m,seconds,t);assert.equal(m.phase,'failed');assert.match(m.failure,reason);assert.equal(m.result!.score,0);
   }
-  const late=departed();late.state.elapsed=1200;tick(late,1,sample());assert.match(late.failure,/Temps maximal/);
+  const late=departed();late.state.elapsed=12000;tick(late,1,sample());assert.equal(late.failure,'');assert.equal(late.finished,false);
 });
 test('recovery retains score penalties and elapsed time, clears failure, and restores a sensible phase',()=>{
   const m=atDock();m.fail('incident');const elapsed=m.state.elapsed,oldId=m.state.runId;m.recover();

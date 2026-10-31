@@ -6,8 +6,9 @@ import type { MissionResult, MissionSnapshot, Telemetry } from './Mission.ts';
 import { MALO_DINARD } from './definitions.ts';
 import type { MissionDefinition } from './definitions.ts';
 import { dockingRules } from './docking.ts';
+import { MISSION_SECONDS } from './timing.ts';
 
-export const CROSSING_SECONDS=360;
+export const CROSSING_SECONDS=MISSION_SECONDS.dinard;
 export const STOPOVER_SECONDS=120;
 const EPSILON=1e-6;
 export interface ServiceTiming {
