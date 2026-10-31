@@ -7,12 +7,21 @@ quand le trafic est activé, y compris la nuit. Aucun second moteur de simulatio
 
 `WaterTaxis.ts` pilote Étoile de la Rance, Belle du Moulinet et Alizé de Cézembre :
 traversée, approche, attente, accostage, escale et départ. Leurs positions initiales
-et leurs escales déterministes de 60 à 120 secondes décalent les rotations. La
-vitesse de croisière est de 17 nd maximum, réduite par la météo ; l’approche se fait
-à 4 nd, l’accostage à 1,4 nd et le dégagement initial en marche arrière à 2 nd.
+décalent les rotations ; chaque escale dure exactement 90 secondes à partir de
+l’accostage. La croisière atteint 20 nd en mer belle (vagues jusqu’à 0,6 m), avec
+une cible de six minutes du départ du quai à l’accostage opposé. Les tests sans
+obstacle mesurent environ 362 à 368 s, manœuvres comprises, dans les deux sens.
+La file au port, les évitements, la mer plus forte et la faible visibilité peuvent
+allonger le trajet. L’approche et la sortie du chenal montent à 12 nd, l’accostage
+à 6 nd, et le dégagement en marche arrière à 8 nd à Saint-Malo et 6 nd à Dinard.
+Ces vitesses restent des plafonds : le freinage réduit progressivement l’allure
+avant chaque point d’arrêt et avant de toucher le quai.
 Les accélérations et rotations sont bornées par le pas physique. Les voies de
 traversée sont séparées, l’approche de Saint-Malo aligne la coque avant le quai.
-Les transferts numériques prennent 12 s de débarquement puis 18 s d’embarquement.
+Les transferts prennent 12 s de débarquement puis 18 s d’embarquement, incluses
+dans les 90 s d’escale. Le compteur de voyageurs transportés augmente au fur et
+à mesure du débarquement, une seule fois ; le chargement du retour reste à bord
+pendant le départ et la traversée suivante.
 
 `Berths.ts` gère une place par port avec occupant, réservation et file FIFO sans
 doublon. La réservation d’une IA couvre aussi la manœuvre de départ, jusqu’au
@@ -52,21 +61,31 @@ sommets (environ 10 200 sommets), plus deux plaques de nom visibles à proximit�
 La variante bleue possède un auvent, la rouge deux cheminées et la verte une
 superstructure de pont. Pas d’asset téléchargé ou de dépendance supplémentaire.
 
+`TaxiPassengerView.ts` ajoute des silhouettes instanciées sur chaque pont selon
+le nombre réel de passagers, ainsi qu’une passerelle et un flux de voyageurs
+pendant le débarquement et l’embarquement à Saint-Malo comme à Dinard. Ces détails
+sont limités à 600 m de la caméra ; la passerelle disparaît à la fin des transferts.
+La géométrie des silhouettes est commune à celle de `PassengerView.ts`.
+
 Le HUD affiche « Quai occupé — veuillez patienter » lors d’un accostage bloqué.
 La carte numérote les trois navettes avec une légende lisible et leur état ; les
 échos radar portent leur nom et signalent les attentes proches. Les informations
 de réservation détaillées restent dans le panneau de carte.
 
 `tests/water-taxis.test.ts` couvre les priorités réciproques, les files, les
-libérations, les rotations prolongées avec et sans trafic ambiant, les transferts,
+libérations, les rotations prolongées avec et sans trafic ambiant, les traversées
+de six minutes à 20 nd, les escales fixes de 90 s, les transferts dans les deux sens,
 les dégagements physiques aux quais, l’évitement du joueur, les bornes de mouvement,
 les cornes concurrentes et la reproductibilité à 30/144 FPS. Le contrôle local
 `.qa/water-taxis-check.mjs` vérifie les modèles, le Web Audio, l’accostage bloqué,
 le saut temporel et le HUD sur cinq formats Chromium. Safari/iPad physique reste
 à vérifier pour les performances matérielles et l’audio du navigateur.
 
-Validation finale : `npm test` réussit avec 99 tests ; `npm run build` réussit,
-avec l’avertissement habituel de taille du bundle principal (environ 805 ko).
+Validation CON-27 : `npm test` réussit avec 145 tests ; `npm run build` réussit,
+avec l’avertissement habituel de taille du bundle principal (environ 851 ko).
+Le contrôle local `.qa/con27-browser.mjs` vérifie les passagers à bord et les
+flux de débarquement/embarquement aux deux ports, puis le retrait des passerelles.
+Les contrôles de mise en page ci-dessous proviennent de la validation initiale.
 Les contrôles Chromium passent à 1 440 × 900, 1 024 × 768, 768 × 1 024,
 844 × 390 et 390 × 844, sans commande couverte ni débordement horizontal.
 La carte mobile conserve une légende lisible pour les trois noms. L’inspection
