@@ -1,4 +1,4 @@
-import { BOAT, clamp, ENGINE_NOTCHES, engineNotch } from '../ships/parameters';
+import { SHIPS, clamp, ENGINE_NOTCHES, engineNotch } from '../ships/parameters';
 import type { VesselDynamics } from '../physics/VesselDynamics';
 import type { CameraMode } from '../world/VesselCamera';
 import { instruments } from '../weather/Marine';
@@ -78,7 +78,7 @@ export class HelmControls {
     }
     for(const [id,direction] of [['rudder-port',-1],['rudder-starboard',1]] as const) {
       const button=get<HTMLButtonElement>(id);
-      const step=()=>this.set({rudder:this.dynamics.command.rudder+direction/BOAT.rudderMaxDegrees});
+      const step=()=>this.set({rudder:this.dynamics.command.rudder+direction/this.dynamics.parameters.rudderMaxDegrees});
       button.addEventListener('click',e=>{if(e.detail===0&&this.enabled&&this.mode()!=='explore')step();},options);
       button.addEventListener('pointerdown',e=>{
         if(e.button!==0||!this.enabled||this.mode()==='explore')return;
@@ -120,6 +120,8 @@ export class HelmControls {
   }
   refresh(): void {
     const c=this.dynamics.command,s=this.dynamics.state;
+    const name=Object.values(SHIPS).find(ship=>ship.parameters===this.dynamics.parameters)?.name??SHIPS.emeraude.name;
+    this.panel.querySelector('.vessel-name')!.textContent=name;this.panel.setAttribute('aria-label','Poste de conduite du '+name);
     const set=(id:string,value:string)=>{const el=this.panel.querySelector(`#${id}`)!;if(el.textContent!==value)el.textContent=value;};
     for(const key of ['port','starboard'] as const){
       const notch=engineNotch(c[key])-3,label=notch===0?'N':`${notch>0?'AV':'AR'}${Math.abs(notch)}`;
@@ -127,9 +129,9 @@ export class HelmControls {
       this.panel.querySelector(`#${key}-neutral`)!.setAttribute('aria-label',`${key==='port'?'Bâbord':'Tribord'} : ${label}, ${Math.round(c[key]*100)} %. Remettre au neutre`);
       this.panel.querySelector(`[data-engine="${key}"]`)!.setAttribute('data-direction',notch<0?'astern':notch>0?'ahead':'neutral');
       this.panel.querySelectorAll<HTMLElement>(`[data-engine="${key}"] [data-notch]`).forEach(tick=>tick.classList.toggle('selected',Number(tick.dataset.notch)===notch));
-      set(`${key}-actual`,`${Math.round(s[key]*100*this.dynamics.powerFactor*(s[key]<0?BOAT.reverseEfficiency:1))} % poussée`);
+      set(`${key}-actual`,`${Math.round(s[key]*100*this.dynamics.powerFactor*(s[key]<0?this.dynamics.parameters.reverseEfficiency:1))} % poussée`);
     }
-    const angle=Math.round(s.rudder*180/Math.PI),demand=Math.round(c.rudder*BOAT.rudderMaxDegrees),reading=instruments(s);
+    const angle=Math.round(s.rudder*180/Math.PI),demand=Math.round(c.rudder*this.dynamics.parameters.rudderMaxDegrees),reading=instruments(s);
     set('rudder-angle',`${Math.abs(angle)}°${angle<0?' B':angle>0?' T':''}`);
     set('rudder-demand',`Consigne ${Math.abs(demand)}°${demand<0?' bâbord':demand>0?' tribord':''}`);
     this.panel.querySelector('#rudder-needle')!.setAttribute('transform',`rotate(${angle*1.6} 100 54)`);

@@ -1,3 +1,5 @@
+import { isShipId } from '../ships/parameters.ts';
+import type { ShipId } from '../ships/parameters.ts';
 import type { Settings } from './settings.ts';
 import { loadSettings } from './settings.ts';
 import type { MissionResult, MissionSnapshot } from '../missions/Mission.ts';
@@ -14,11 +16,12 @@ import type { ServiceSnapshot, ServiceResult } from '../missions/FerryService.ts
 import { BOAT } from '../ships/parameters.ts';
 
 export interface MarineSettings {sea:SeaState;targetDirection:number;hour:number;tidePhase:number;evolving:boolean;dayCycle:boolean;tideCycle:boolean;damageEnabled:boolean;sound:boolean}
-export interface SavedRun {missionId:string;mission:MissionSnapshot;vessel:VesselState;command:HelmCommand;marine:MarineSettings;damage:number;passengers?:PassengerSnapshot;tourVisited?:string[];service?:ServiceSnapshot}
+export interface SavedRun {shipId?:ShipId;missionId:string;mission:MissionSnapshot;vessel:VesselState;command:HelmCommand;marine:MarineSettings;damage:number;passengers?:PassengerSnapshot;tourVisited?:string[];service?:ServiceSnapshot}
 export interface ImmersionSettings {audio:AudioSettings;traffic:boolean;automatic:boolean;manual:boolean;muted:boolean;comments:TourComment[]}
 export const defaultImmersion=():ImmersionSettings=>({audio:defaultAudio(),traffic:true,automatic:true,manual:true,muted:false,comments:structuredClone(DEFAULT_COMMENTS)});
 export type InstrumentLayout=Record<string,{visible:boolean;left:number|null;top:number|null}>;
 export interface GameData {
+  selectedShip:ShipId;
   settings:Settings;marine:MarineSettings;active:SavedRun|null;
   stats:{completed:number;failed:number;passengers:number;seconds:number;freeSeconds:number;freeDistance:number;best:number};
   history:MissionResult[];
@@ -27,7 +30,7 @@ export interface GameData {
   immersion:ImmersionSettings;
 }
 export const defaultMarine=():MarineSettings=>({sea:'belle',targetDirection:250,hour:14,tidePhase:0,evolving:true,dayCycle:true,tideCycle:true,damageEnabled:true,sound:true});
-export function freshData():GameData {return {settings:loadSettings(),marine:defaultMarine(),active:null,stats:{completed:0,failed:0,passengers:0,seconds:0,freeSeconds:0,freeDistance:0,best:0},history:[],services:[],instruments:{},immersion:defaultImmersion()};}
+export function freshData():GameData {return {selectedShip:'emeraude',settings:loadSettings(),marine:defaultMarine(),active:null,stats:{completed:0,failed:0,passengers:0,seconds:0,freeSeconds:0,freeDistance:0,best:0},history:[],services:[],instruments:{},immersion:defaultImmersion()};}
 export function validServiceResult(value:unknown):value is ServiceResult {
   if(!value||typeof value!=='object')return false;
   const r=value as ServiceResult;
@@ -63,6 +66,7 @@ export function readMarine(value:unknown):MarineSettings {
 export function validRun(v:unknown):v is SavedRun {
   if(!v||typeof v!=='object')return false;
   const a=v as SavedRun,s=a.mission;
+  if(a.shipId!==undefined&&!isShipId(a.shipId))return false;
   if(typeof a.missionId!=='string'||!s||typeof s.runId!=='string'||!['boarding','departure','crossing','approach','docking','unloading'].includes(s.phase))return false;
   if(!['departure','approach'].includes(s.checkpoint)||!s.metrics||!Array.isArray(s.visited)||!s.visited.every(n=>Number.isInteger(n)&&n>=0&&n<100))return false;
   if(![s.elapsed,s.phaseTime,s.hold,s.groundedSeconds,...Object.values(s.metrics)].every(n=>finite(n,0,1e9)))return false;
@@ -102,6 +106,7 @@ export class GameStore {
       });
       if(raw&&typeof raw==='object'){
         const v=raw as Partial<GameData>;
+        if(isShipId(v.selectedShip))this.data.selectedShip=v.selectedShip;
         if(v.settings){this.data.settings.quality=['low','medium','high'].includes(v.settings.quality)?v.settings.quality:'low';this.data.settings.showFps=v.settings.showFps===true;}
         this.data.marine=readMarine(v.marine);
         if(v.immersion&&typeof v.immersion==='object'){
