@@ -1,5 +1,6 @@
 import { CONFIG } from '../config';
 import { FixedStep } from './FixedStep';
+import { TimeAcceleration } from './TimeAcceleration';
 
 export class SimulationLoop {
   private clock = new FixedStep(CONFIG.simulation.step, CONFIG.simulation.maxFrame, CONFIG.simulation.maxSteps);
@@ -10,6 +11,7 @@ export class SimulationLoop {
   private visualTime = 0;
   private interpolation = 0;
   paused = false;
+  readonly acceleration = new TimeAcceleration();
   fps: number = 30;
   constructor(private update: (dt: number, time: number) => void,
     private render: (dt: number, time: number, alpha: number) => void, private onError: (error: unknown) => void) {}
@@ -26,7 +28,7 @@ export class SimulationLoop {
     try {
       const dt = (now - this.previous) / 1000;
       this.previous = now;
-      const alpha = this.paused ? 0 : this.clock.advance(dt, this.update);
+      const alpha = this.paused ? 0 : this.clock.advance(dt, this.update, () => this.acceleration.multiplier, () => !this.paused);
       if (!this.paused) { this.visualTime = this.clock.time + alpha * this.clock.step; this.interpolation = alpha; }
       const interval = 1000 / this.fps;
       if (now - this.lastRender >= interval - 0.5) {

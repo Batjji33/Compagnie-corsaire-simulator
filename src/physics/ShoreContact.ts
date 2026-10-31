@@ -4,6 +4,19 @@ import { BOAT } from '../ships/parameters.ts';
 import type { ExternalForce, VesselState } from './VesselDynamics.ts';
 
 interface Obstacle {name:string;kind:'shore'|'quay';polygon:readonly Point[];bounds?:{minX:number;maxX:number;minZ:number;maxZ:number}}
+function boundsOf(obstacle:Obstacle) {
+  return obstacle.bounds??= {minX:Math.min(...obstacle.polygon.map(p=>p[0])),maxX:Math.max(...obstacle.polygon.map(p=>p[0])),minZ:Math.min(...obstacle.polygon.map(p=>p[1])),maxZ:Math.max(...obstacle.polygon.map(p=>p[1]))};
+}
+function nearestEdge(x:number,z:number,polygon:readonly Point[]) {
+  let distance=Infinity,px=0,pz=0;
+  for(let i=0;i<polygon.length;i++) {
+    const a=polygon[i],b=polygon[(i+1)%polygon.length],dx=b[0]-a[0],dz=b[1]-a[1];
+    const t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz)));
+    const qx=a[0]+dx*t,qz=a[1]+dz*t,d=Math.hypot(x-qx,z-qz);
+    if(d<distance){distance=d;px=qx;pz=qz;}
+  }
+  return {distance,px,pz};
+}
 /** Hull contacts shared by physics and radar; damage is handled by Marine. */
 export class ShoreContact {
   readonly obstacles:Obstacle[]=[];
@@ -31,6 +44,15 @@ export class ShoreContact {
   private reportContact(name:string,vx:number,vz:number,nx:number,nz:number):void {
     this.label=name;this.impactSpeed=Math.max(this.impactSpeed,-(vx*nx+vz*nz));
   }
+  /** Read-only clearance query using exactly the obstacles used by hull contacts. */
+  nearby(x:number,z:number,margin:number):'shore'|'quay'|'rock'|undefined {
+    for(const obstacle of this.obstacles) {
+      const b=boundsOf(obstacle);
+      if(x+margin<b.minX||x-margin>b.maxX||z+margin<b.minZ||z-margin>b.maxZ)continue;
+      if(inside(x,z,obstacle.polygon)||nearestEdge(x,z,obstacle.polygon).distance<=margin)return obstacle.kind;
+    }
+    if(ROCKS.some(r=>Math.hypot(x-r.x,z-r.z)<=r.radius+margin))return 'rock';
+  }
   evaluate(s:VesselState):ExternalForce {
     this.result.x=this.result.z=this.result.yaw=0;this.label='';this.impactSpeed=0;
     const sin=Math.sin(s.heading),cos=Math.cos(s.heading),radius=BOAT.beam/2;
@@ -39,15 +61,9 @@ export class ShoreContact {
       const vx=sin*s.surge+cos*(s.sway+s.yawRate*forward),vz=-cos*s.surge+sin*(s.sway+s.yawRate*forward);
       let penetration=0,nx=0,nz=0;
       for(const obstacle of this.obstacles) {
-        const b=obstacle.bounds??= {minX:Math.min(...obstacle.polygon.map(p=>p[0])),maxX:Math.max(...obstacle.polygon.map(p=>p[0])),minZ:Math.min(...obstacle.polygon.map(p=>p[1])),maxZ:Math.max(...obstacle.polygon.map(p=>p[1]))};
+        const b=boundsOf(obstacle);
         if(x+radius<b.minX||x-radius>b.maxX||z+radius<b.minZ||z-radius>b.maxZ)continue;
-        let distance=Infinity,px=0,pz=0;
-        for(let i=0;i<obstacle.polygon.length;i++) {
-          const a=obstacle.polygon[i],b=obstacle.polygon[(i+1)%obstacle.polygon.length],dx=b[0]-a[0],dz=b[1]-a[1];
-          const t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz)));
-          const qx=a[0]+dx*t,qz=a[1]+dz*t,d=Math.hypot(x-qx,z-qz);
-          if(d<distance){distance=d;px=qx;pz=qz;}
-        }
+        const {distance,px,pz}=nearestEdge(x,z,obstacle.polygon);
         const within=inside(x,z,obstacle.polygon),depth=radius+(within?distance:-distance);
         if(depth>0&&distance>1e-6) {
           const sign=within?-1:1,hitX=(x-px)/distance*sign,hitZ=(z-pz)/distance*sign;

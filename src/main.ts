@@ -34,13 +34,14 @@ async function boot():Promise<void> {
   loop = new SimulationLoop((dt) => {game.update(dt);}, (dt, time, alpha) => {
     world.render(dt, time, alpha);
     marinePanel.update(dt);
+    helm.render(dt);
     game.render(dt);
     const fps = meter.sample(performance.now());
     if (settings.showFps && fps !== null) ui.fps.textContent = `${fps} FPS`;
     if (fps !== null) {ui.updatePosition(world.camera.position.x,world.camera.position.z);helm.refresh();}
   }, showError);
   loop.fps = CONFIG.quality[settings.quality].fps;
-  game=new Game(world,helm,ui,marinePanel,store,paused=>{loop.paused=paused;});
+  game=new Game(world,helm,ui,marinePanel,store,paused=>{loop.paused=paused;},loop.acceleration);
   const abort = new AbortController();
   const options = { signal: abort.signal };
   const observer = new ResizeObserver(() => world.resize());
