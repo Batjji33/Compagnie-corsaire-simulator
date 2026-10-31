@@ -114,8 +114,9 @@ retardé consomme donc ce créneau. Le retard cumulé est la somme des retards a
 accostages, avec le retard en cours ajouté à l’affichage pendant la navigation.
 Les retards d’arrivée décalent le départ suivant ; ils restent acquis au cumul.
 
-Le compteur de créneau reboucle toutes les 360 s, indépendamment de la mission.
-L’expiration ne modifie ni route ni navire. Une arrivée anticipée conserve le temps
+Le compteur alterne 360 s de traversée et 120 s d’escale, même en attente de cale.
+Le HUD affiche la phase et sa durée (6:00 ou 2:00), tandis que la ponctualité reste
+liée à l’arrivée prévue. L’expiration ne modifie ni route ni navire. Une arrivée anticipée conserve le temps
 restant avant les 120 s d’escale ; une arrivée tardive impose 120 s dès l’accostage.
 `Mission.unloadingAllowed` garde le trajet actif jusqu’au terme de l’escale et
 `departureAllowed` empêche le largage prématuré, sans changer les missions classiques.
@@ -132,5 +133,10 @@ Navigation, escale et retard restent des compteurs distincts.
 Les anciennes sauvegardes sans `timing` migrent en conservant leur temps et leur
 trajet. Leur répartition historique navigation/escale est estimée à partir de la
 phase restaurée, faute d’informations antérieures ; les nouveaux trajets sont exacts.
+Les anciennes durées adaptées au navire (notamment 510 s pour le catamaran) sont
+ramenées à 360 s à la reprise, avec recalcul de l’arrivée prévue, du prochain départ
+et du retard de l’accostage courant. Le temps écoulé et le trajet sont conservés.
+La ligne garde cette durée pour tous les navires ; les excursions conservent leur
+adaptation à la vitesse du navire.
 
 Voir [le guide de jeu](../../docs/GAMEPLAY.md) pour les commandes et les règles.

@@ -7,7 +7,7 @@ import { MALO_DINARD } from './definitions.ts';
 import type { MissionDefinition } from './definitions.ts';
 import { dockingRules } from './docking.ts';
 
-export const CROSSING_SECONDS=360;
+export const CROSSING_SECONDS=MALO_DINARD.targetSeconds;
 export const STOPOVER_SECONDS=120;
 const EPSILON=1e-6;
 export interface ServiceTiming {
@@ -57,8 +57,21 @@ export class FerryService {
       runId:leg?`service-${leg.runId}`:globalThis.crypto?.randomUUID?.()??`service-${Date.now()}-${Math.random()}`,completed:0,transported:0,
       elapsed:leg?.elapsed??0,accountedSeconds:leg?.accountedSeconds??0,satisfactionTotal:0,dockingTotal:0,approachContacts:0,currentDockQuality:null,
     };
-    if(!snapshot&&boat.catamaran)this.state.crossingSeconds=vesselMission(MALO_DINARD,boat).targetSeconds;
     this.mission=new Mission(serviceDefinition(this.state.completed,this.boat),leg,true);
+    // Older catamaran saves scaled the timetable with the ship's speed (e.g. 510 s).
+    // Keep the voyage and elapsed time, but apply the line's fixed six-minute target.
+    if(this.state.crossingSeconds!==undefined&&this.state.crossingSeconds!==CROSSING_SECONDS){
+      const t=this.state.timing;
+      if(t){
+        const previousDue=t.arrivalDue;
+        t.arrivalDue=t.scheduledDeparture+CROSSING_SECONDS;
+        if(t.arrivedAt!==null){
+          t.nextDeparture=Math.max(t.arrivalDue,t.arrivedAt)+STOPOVER_SECONDS;
+          t.cumulativeDelay+=Math.max(0,t.arrivedAt-t.arrivalDue)-Math.max(0,t.arrivedAt-previousDue);
+        }
+      }
+      this.state.crossingSeconds=CROSSING_SECONDS;
+    }
     // Legacy saves retain their voyage and clock. New timing data is bounded per service.
     if(!this.state.timing){
       const departure=Math.max(0,this.state.elapsed-this.mission.state.elapsed)+this.mission.definition.boardingSeconds;
@@ -71,14 +84,24 @@ export class FerryService {
     this.syncDeparture();
   }
   get timing():ServiceTiming {return this.state.timing!;}
-  get crossingSeconds():number {return this.state.crossingSeconds??CROSSING_SECONDS;}
+  get crossingSeconds():number {return CROSSING_SECONDS;}
   get hour():number {return (MALO_DINARD.departureHour+this.state.elapsed/3600)%24;}
-  /** The slot rolls over independently of arrival, unloading and the active route. */
-  get slotRemaining():number {
+  /** The displayed timetable keeps running while navigating or waiting for a berth. */
+  get slot():{phase:'crossing'|'stopover';remaining:number;duration:number} {
+    const t=this.timing;
+    // An actual stopover still lasts two full minutes after a late arrival.
+    if(t.arrivedAt!==null&&this.state.elapsed>=t.arrivalDue-EPSILON)
+      return {phase:'stopover',remaining:Math.min(STOPOVER_SECONDS,this.waitRemaining),duration:STOPOVER_SECONDS};
     const elapsed=Math.max(0,this.state.elapsed-this.timing.scheduledDeparture);
-    const offset=elapsed%this.crossingSeconds;
-    return offset<EPSILON||this.crossingSeconds-offset<EPSILON?this.crossingSeconds:this.crossingSeconds-offset;
+    const cycle=CROSSING_SECONDS+STOPOVER_SECONDS;
+    let offset=elapsed%cycle;
+    if(offset<EPSILON||cycle-offset<EPSILON)offset=0;
+    if(Math.abs(offset-CROSSING_SECONDS)<EPSILON)offset=CROSSING_SECONDS;
+    return offset<CROSSING_SECONDS
+      ?{phase:'crossing',remaining:CROSSING_SECONDS-offset,duration:CROSSING_SECONDS}
+      :{phase:'stopover',remaining:cycle-offset,duration:STOPOVER_SECONDS};
   }
+  get slotRemaining():number {return this.slot.remaining;}
   get departureAt():number {return this.timing.nextDeparture??this.timing.scheduledDeparture;}
   get waitRemaining():number {return Math.max(0,this.departureAt-this.state.elapsed);}
   get delay():number {
