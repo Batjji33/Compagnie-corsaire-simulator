@@ -13,32 +13,19 @@ continuent d’utiliser leur horloge habituelle.
 
 ## Excursions de la Côte d’Émeraude
 
-`timing.ts` centralise les objectifs : Dinard 6 min par traversée, Cézembre 10 min
-dans chaque sens, Cap Fréhel – Fort La Latte 30 min, Baie du Corsaire 15 min.
-Ces cibles servent aux affichages et à la ponctualité ; aucun retard ne termine
-la mission, ne téléporte le navire ou ne change sa vitesse.
-La géométrie actuelle représente environ 34 km pour le circuit du cap et 11 km
-pour la baie : à 17 nd, la navigation seule peut donc dépasser les cibles
-(environ 65 et 22 min). Les objectifs ne sont pas des durées garanties ;
-les distances et la physique restent inchangées.
-
-`excursions.ts` définit trois entrées en complément du service Dinard :
-Saint-Malo ↔ Cézembre (sens choisi au lancement), Cap Fréhel – Fort La Latte
-et Baie du Corsaire. Les références sont les pages officielles de la
+`excursions.ts` définit trois missions finies : Saint-Malo → Cézembre, Fort La Latte
+et Cap Fréhel & Fort La Latte. Les références sont les pages officielles de la
 [traversée vers Cézembre](https://compagniecorsaire.com/destination/ile-cezembre/),
 du [circuit côtier](https://compagniecorsaire.com/destination/croisiere-cap-frehel-fort-la-latte/)
 et des [embarcadères malouins](https://compagniecorsaire.com/ports-de-depart/acces-saint-malo-croisiere-bateau/),
 consultées le 30 octobre 2026.
 
-Cézembre relie la cale de Dinan au débarcadère de l’île dans les deux sens.
-Le retour possède son identifiant de sauvegarde `cezembre-malo` et ses indications
-de navigation et commentaires vers Saint-Malo. Les deux croisières partent de la
-Bourse et y reviennent. Le circuit côtier longe Saint-Énogat, Saint-Lunaire,
-Saint-Briac, Lancieux/Ébihens et Saint-Cast, puis Fort La Latte et Fréhel, avant
-le retour par le large. La variante courte Fort La Latte est retirée du catalogue
-et des définitions. Ni le fort ni le cap ne deviennent un quai.
-La Baie du Corsaire visite le Môle, le panorama de Dinard, les Bé et Fort National,
-avec des commentaires aux étapes et une observation lente devant Fort National.
+Cézembre part de la cale de Dinan et se termine par le débarquement sur l’île.
+Les deux croisières partent de la Bourse et y reviennent. Elles longent Saint-Énogat,
+Saint-Lunaire, Saint-Briac, Lancieux/Ébihens et Saint-Cast, puis Fort La Latte ;
+la croisière complète continue vers Fréhel et revient par le large. La mission
+Fort La Latte est explicitement une variante courte de jeu du circuit commercial
+combiné, avec demi-tour au fort. Ni le fort ni le cap ne deviennent un quai.
 
 `MissionDefinition.excursion` active la validation ordonnée des `Waypoint`.
 `radius` définit la zone ; `dwellSeconds` et `maxKnots` imposent les panoramas

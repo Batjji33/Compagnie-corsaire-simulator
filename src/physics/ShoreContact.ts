@@ -1,3 +1,4 @@
+import type { BoatParameters } from '../ships/parameters.ts';
 import { DOCKS, LANDS, ROCKS, inside } from '../world/geography.ts';
 import type { Point } from '../world/geography.ts';
 import { BOAT } from '../ships/parameters.ts';
@@ -19,6 +20,7 @@ function nearestEdge(x:number,z:number,polygon:readonly Point[]) {
 }
 /** Hull contacts shared by physics and radar; damage is handled by Marine. */
 export class ShoreContact {
+  parameters:BoatParameters=BOAT;
   readonly obstacles:Obstacle[]=[];
   private result:ExternalForce={x:0,z:0,yaw:0};
   label='';
@@ -55,8 +57,9 @@ export class ShoreContact {
   }
   evaluate(s:VesselState):ExternalForce {
     this.result.x=this.result.z=this.result.yaw=0;this.label='';this.impactSpeed=0;
-    const sin=Math.sin(s.heading),cos=Math.cos(s.heading),radius=BOAT.beam/2;
-    for(const forward of [-9,0,9]) {
+    const sin=Math.sin(s.heading),cos=Math.cos(s.heading),radius=this.parameters.beam/2;
+    const half=this.parameters.catamaran?(this.parameters.length-this.parameters.beam)/2:9;
+    for(const forward of [-half,0,half]) {
       const x=s.x+sin*forward,z=s.z-cos*forward;
       const vx=sin*s.surge+cos*(s.sway+s.yawRate*forward),vz=-cos*s.surge+sin*(s.sway+s.yawRate*forward);
       let penetration=0,nx=0,nz=0;
@@ -84,8 +87,8 @@ export class ShoreContact {
       }
       if(penetration>0) {
         const normalVelocity=vx*nx+vz*nz;
-        const force=Math.max(0,BOAT.contact.stiffness*penetration-BOAT.contact.damping*normalVelocity);
-        const fx=nx*force-(vx-nx*normalVelocity)*BOAT.contact.friction,fz=nz*force-(vz-nz*normalVelocity)*BOAT.contact.friction;
+        const force=Math.max(0,this.parameters.contact.stiffness*penetration-this.parameters.contact.damping*normalVelocity);
+        const fx=nx*force-(vx-nx*normalVelocity)*this.parameters.contact.friction,fz=nz*force-(vz-nz*normalVelocity)*this.parameters.contact.friction;
         this.result.x+=fx;this.result.z+=fz;this.result.yaw+=forward*(cos*fx+sin*fz);
       }
     }

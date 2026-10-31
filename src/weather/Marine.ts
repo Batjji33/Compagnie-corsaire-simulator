@@ -1,3 +1,4 @@
+import type { BoatParameters } from '../ships/parameters.ts';
 import { BOAT, KNOT, clamp } from '../ships/parameters.ts';
 import { ROCKS } from '../world/geography.ts';
 import type { VesselState, ExternalForce } from '../physics/VesselDynamics.ts';
@@ -15,6 +16,7 @@ export function depthAt(x:number,z:number,tide=0):number {
 export const degrees=(r:number)=>((r*180/Math.PI)%360+360)%360;
 export function instruments(s:VesselState) {return {heading:Math.round(degrees(s.heading))%360,speed:Math.hypot(s.surge,s.sway)/KNOT};}
 export class Marine {
+  parameters:BoatParameters=BOAT;
   time=0; hour=14; tide=0; tidePhase=0; wind=10; direction=250; waves=.6; visibility=7000;
   sea:SeaState='belle'; targetDirection=250; evolving=true; dayCycle=true; tideCycle=true;
   damageEnabled=true; sound=true; damage=0; depth=9; clearance=7.1; warning='';
@@ -45,9 +47,10 @@ export class Marine {
   }
   hazards(s:VesselState,contact:string,impact:number,dt:number):boolean {
     this.depth=depthAt(s.x,s.z,this.tide);
-    this.clearance=Math.min(...[-10,0,10].map(f=>depthAt(s.x+Math.sin(s.heading)*f,s.z-Math.cos(s.heading)*f,this.tide)))-BOAT.draft;
+    const fore=this.parameters.catamaran?this.parameters.length*.38:10;
+    this.clearance=Math.min(...[-fore,0,fore].map(f=>depthAt(s.x+Math.sin(s.heading)*f,s.z-Math.cos(s.heading)*f,this.tide)))-this.parameters.draft;
     const speed=Math.hypot(s.surge,s.sway);
-    const ahead=depthAt(s.x+Math.sin(s.heading)*Math.max(30,speed*12),s.z-Math.cos(s.heading)*Math.max(30,speed*12),this.tide)-BOAT.draft;
+    const ahead=depthAt(s.x+Math.sin(s.heading)*Math.max(30,speed*12),s.z-Math.cos(s.heading)*Math.max(30,speed*12),this.tide)-this.parameters.draft;
     const grounded=this.clearance<=0;
     this.warning=contact?`Contact : ${contact}`:grounded?'Échouement':Math.min(this.clearance,ahead)<1?'Attention : haut-fond':this.visibility<3000?'Visibilité réduite':'';
     if(this.damageEnabled) {

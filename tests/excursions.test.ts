@@ -1,8 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {EXCURSIONS, CEZEMBRE, CEZEMBRE_RETURN, CAP_FREHEL, BAIE_CORSAIRE} from '../src/missions/excursions.ts';
-import {MISSIONS} from '../src/missions/definitions.ts';
-import {serviceDefinition} from '../src/missions/FerryService.ts';
+import {EXCURSIONS, CEZEMBRE, CAP_FREHEL, FORT_LA_LATTE} from '../src/missions/excursions.ts';
 import {Mission} from '../src/missions/Mission.ts';
 import type {Telemetry} from '../src/missions/Mission.ts';
 import {Passengers} from '../src/passengers/Passengers.ts';
@@ -13,7 +11,6 @@ import {TourGuide} from '../src/excursions/comments.ts';
 import {freshData, recordResult, validRun, defaultMarine} from '../src/saves/GameStore.ts';
 
 const telemetry=(x:number,z:number,speed=0):Telemetry=>({x,z,speed,heading:0,yawRate:0,port:0,starboard:0,commandPort:0,commandStarboard:0,damage:0,contact:'',clearance:5});
-const playableExcursions=[...EXCURSIONS,CEZEMBRE_RETURN];
 const depart=(m:Mission)=>{
   const d=m.definition;m.board();m.update(d.boardingSeconds,telemetry(d.origin.berth.x,d.origin.berth.z));
   m.release();m.update(1,telemetry(d.route[0].x,d.route[0].z));assert.equal(m.phase,'crossing');
@@ -24,18 +21,16 @@ test('three excursions have ordered coastal waypoints, documented circuits and d
   assert.equal(new Set(EXCURSIONS.map(d=>d.id)).size,3);
   assert.ok(CAP_FREHEL.route.some(p=>p.label==='Fort La Latte'));
   assert.ok(CAP_FREHEL.route.some(p=>p.label.startsWith('Cap Fréhel')));
-  assert.equal(MISSIONS.length,4);
-  assert.ok(!MISSIONS.some(d=>d.id==='fort-la-latte'));
-  assert.equal(BAIE_CORSAIRE.origin.dockId,BAIE_CORSAIRE.destination.dockId);
-  for(const d of playableExcursions){
-    assert.ok(d.origin.dockId&&d.destination.dockId);assert.ok(d.excursion?.source.startsWith('https://'));
+  assert.ok(FORT_LA_LATTE.excursion?.adaptation);
+  for(const d of EXCURSIONS){
+    assert.ok(d.origin.dockId&&d.destination.dockId);assert.ok(d.excursion?.source.startsWith('https://compagniecorsaire.com/'));
     assert.ok(d.route.filter(p=>p.comment).length>=2);assert.ok(d.passengers>0&&d.passengers<=270);
   }
 });
 
 test('every excursion segment and berth is clear for a full hull, including at simulated low tide',()=>{
   const v=new VesselDynamics(),shore=new ShoreContact();
-  for(const d of playableExcursions){
+  for(const d of EXCURSIONS){
     const points=[d.origin.berth,...d.route,d.destination.berth];
     for(let j=1;j<points.length;j++){
       const a=points[j-1],b=points[j],distance=Math.hypot(b.x-a.x,b.z-a.z);
@@ -58,7 +53,7 @@ test('round trips cannot finish at departure or skip sightseeing points, even be
 });
 
 test('panoramas require slow continuous observation and progress survives save and resume',()=>{
-  const d=CAP_FREHEL,m=new Mission(d);depart(m);
+  const d=FORT_LA_LATTE,m=new Mission(d);depart(m);
   const index=d.route.findIndex(p=>p.dwellSeconds);m.state.visited=Array.from({length:index},(_,i)=>i);
   const p=d.route[index];m.update(20,telemetry(p.x,p.z,3));assert.equal(m.state.hold,0);
   m.update(8,telemetry(p.x,p.z,0));assert.equal(m.state.hold,8);
@@ -70,14 +65,12 @@ test('panoramas require slow continuous observation and progress survives save a
 });
 
 test('all excursions board real passenger counts, visit the route, dock and only then unload and record results',()=>{
-  for(const d of playableExcursions){
+  for(const d of EXCURSIONS){
     const m=new Mission(d),people=new Passengers();m.board();
     m.update(d.boardingSeconds/2,telemetry(d.origin.berth.x,d.origin.berth.z));
     people.update(0,m.phase,m.state.phaseTime,d.passengers,d.boardingSeconds,d.unloadingSeconds,0,0,0);
     assert.equal(people.count,Math.floor(d.passengers/2));assert.equal(m.moored,true);
     m.update(d.boardingSeconds/2,telemetry(d.origin.berth.x,d.origin.berth.z));m.release();m.update(.1,telemetry(d.route[0].x,d.route[0].z));
-    // Being very late never skips a waypoint, ends a voyage or prevents docking.
-    m.state.elapsed=d.targetSeconds*10;
     for(const p of d.route){
       m.update(p.dwellSeconds??.1,telemetry(p.x,p.z));
       people.update(0,m.phase,m.state.phaseTime,d.passengers,d.boardingSeconds,d.unloadingSeconds,0,0,0);
@@ -90,20 +83,7 @@ test('all excursions board real passenger counts, visit the route, dock and only
     m.update(d.unloadingSeconds,telemetry(end.x,end.z));assert.equal(m.phase,'complete');
     people.update(0,m.phase,m.state.phaseTime,d.passengers,d.boardingSeconds,d.unloadingSeconds,0,0,0);assert.equal(people.count,0);
     const data=freshData();assert.ok(recordResult(data,m.result!));assert.equal(data.stats.passengers,d.passengers);
-    assert.equal(m.result!.punctuality,0);assert.equal(m.result!.routeTitle,d.title);
   }
-});
-
-test('central objectives match both crossing directions and the two cruises',()=>{
-  assert.equal(serviceDefinition(0).targetSeconds,360);assert.equal(serviceDefinition(1).targetSeconds,360);
-  assert.equal(CEZEMBRE.targetSeconds,600);assert.equal(CEZEMBRE_RETURN.targetSeconds,600);
-  assert.equal(CAP_FREHEL.targetSeconds,1800);assert.equal(BAIE_CORSAIRE.targetSeconds,900);
-  assert.equal(CEZEMBRE_RETURN.origin.dockId,CEZEMBRE.destination.dockId);
-  assert.equal(CEZEMBRE_RETURN.destination.dockId,CEZEMBRE.origin.dockId);
-  const m=new Mission(CEZEMBRE_RETURN);depart(m);
-  assert.equal(m.waypoint?.label,'Quitter le débarcadère de Cézembre');
-  const restored=new Mission(CEZEMBRE_RETURN,structuredClone(m.state));
-  assert.equal(restored.definition.destination.dockId,'malo');assert.equal(restored.definition.targetSeconds,600);
 });
 
 test('authored itinerary comments are shown once and respect muted/manual preferences',()=>{

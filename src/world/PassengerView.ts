@@ -31,14 +31,16 @@ export class PassengerView {
     for(let i=0;i<MAX_PEOPLE*2;i++){const color=new Color(palette[i%palette.length]);this.quayBodies.setColorAt(i,color);if(i<MAX_PEOPLE)this.deckBodies.setColorAt(i,color);}
     this.deck.add(this.deckBodies,this.deckHeads);this.vessel.model.root.add(this.deck);this.quay.add(this.quayBodies,this.quayHeads,this.gangway);
   }
+  attach():void {this.vessel.model.root.add(this.deck);}
+  detach():void {this.deck.removeFromParent();}
   render(dt:number,time:number):void {
     this.elapsed+=dt;if(this.elapsed<.2)return;this.elapsed=0;
     const p=this.people,aboard=Math.min(MAX_PEOPLE,Math.ceil(p.count/5)),moving=p.phase==='boarding'||p.phase==='unloading';
     this.deckBodies.count=this.deckHeads.count=aboard;
     for(let i=0;i<aboard;i++){
       const row=Math.floor(i/6),column=i%6;
-      const x=[-2.6,-1.75,-.9,.9,1.75,2.6][column],z=.2+row*1.25;
-      this.object.position.set(x,4.72,z);this.object.rotation.set(0,column<3?Math.PI/2:-Math.PI/2,0);
+      const x=[-2.6,-1.75,-.9,.9,1.75,2.6][column],z=(this.vessel.shipId==='saint-malo'?-1.8:.2)+row*1.25;
+      this.object.position.set(x,this.vessel.shipId==='saint-malo'?4.42:4.72,z);this.object.rotation.set(0,column<3?Math.PI/2:-Math.PI/2,0);
       // Static seated/standing silhouettes, shared boat motion handles the sea.
       this.object.scale.setScalar(i%4===0?.85:1);this.object.updateMatrix();
       this.deckBodies.setMatrixAt(i,this.object.matrix);this.deckHeads.setMatrixAt(i,this.object.matrix);
@@ -46,7 +48,7 @@ export class PassengerView {
     const count=moving?Math.min(MAX_PEOPLE,Math.ceil((p.total-p.count)/5)):p.phase==='complete'?Math.min(MAX_PEOPLE,Math.ceil(p.total/5)):0;
     const s=this.vessel.dynamics.state,dock=DOCKS.find(d=>d.id===p.transferPort)??DOCKS.reduce((a,b)=>Math.hypot(s.x-a.point[0],s.z-a.point[1])<Math.hypot(s.x-b.point[0],s.z-b.point[1])?a:b);
     const sin=Math.sin(s.heading),cos=Math.cos(s.heading),side=Math.sign((dock.point[0]-s.x)*cos+(dock.point[1]-s.z)*sin)||1;
-    this.entry.set(s.x+cos*side*3.5-sin*3,this.vessel.root.position.y+2,s.z+sin*side*3.5+cos*3);
+    this.entry.set(s.x+cos*side*(this.vessel.parameters.beam/2-.25)-sin*3,this.vessel.root.position.y+2,s.z+sin*side*3.5+cos*3);
     this.landing.set(dock.point[0],5.05,dock.point[1]);this.direction.subVectors(this.landing,this.entry);
     this.gangway.visible=moving&&Math.hypot(s.x-dock.point[0],s.z-dock.point[1])<80;this.gangway.position.copy(this.entry).add(this.landing).multiplyScalar(.5);this.gangway.scale.set(1.15,1,this.direction.length());this.gangway.quaternion.setFromUnitVectors(this.axis,this.direction.normalize());
     let index=0;

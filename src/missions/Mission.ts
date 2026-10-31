@@ -80,6 +80,7 @@ export class Mission {
     if(!this.continuous){
       if(t.damage>=d.rules.maxDamage){this.fail('Coque trop endommagée pour transporter les passagers.');return;}
       if(s.groundedSeconds>d.rules.maxGroundedSeconds){this.fail('Échouement prolongé : assistance nécessaire.');return;}
+      if(s.elapsed>d.maxSeconds+s.metrics.recoveries*300){this.fail('Temps maximal de mission dépassé. Reprenez au point sûr pour disposer de 5 minutes supplémentaires.');return;}
       if(t.x<BAY.minX||t.x>BAY.maxX||t.z<BAY.minZ||t.z>BAY.maxZ){this.fail('Le navire a quitté la zone de jeu.');return;}
     }
     switch(this.phase){
