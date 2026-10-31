@@ -201,6 +201,9 @@ kbd { font: inherit; color: var(--muted); margin-left: auto; }
 #objective-guidance { color: var(--accent); line-height: 1.5; font-variant-numeric: tabular-nums; margin: 6px 0 8px; }
 .objective-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .objective-actions button { min-height: 44px; padding: 0 10px; font-size: 12px; }
+#mission-time-rate { margin-left: auto; min-width: 76px; font-variant-numeric: tabular-nums; }
+#mission-time-rate[data-accelerated=true] { color: var(--accent); }
+#mission-time-notice { color: var(--warning); line-height: 1.5; margin-top: 6px; }
 #mission-details, #mission-skip { background: transparent; border-color: var(--edge); }
 #mission-action { border-color: var(--accent); }
 #objective-details { max-height: min(220px, 30dvh); overflow: auto; margin-top: 10px; border-top: 1px solid var(--edge); padding-top: 10px; }

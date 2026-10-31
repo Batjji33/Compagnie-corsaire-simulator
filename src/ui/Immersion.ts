@@ -89,6 +89,7 @@ export class Immersion {
     window.addEventListener('blur',stopHorn,options);
     this.status.id='passenger-status';this.status.setAttribute('aria-live','off');summary.append(this.status);
     this.notice.className='tour-notice';this.notice.hidden=true;this.notice.innerHTML=`<summary>${icon('tour')}<span id="tour-notice-title" aria-live="polite">Annonce touristique</span><span class="tour-read">Lire</span></summary>`;
+    this.notice.addEventListener('toggle',()=>{if(this.notice.open&&this.guide.selected)this.guide.choose(this.guide.selected.id);},options);
     this.caption.id='tour-caption';this.notice.append(this.caption);
     this.notice.insertAdjacentHTML('beforeend',`<div class="tour-caption-actions"><button id="tour-notice-play">${icon('sound')}<span>Écouter le commentaire</span></button><button id="tour-notice-stop">Arrêter</button></div><p id="tour-notice-voice-status" role="status" hidden></p>`);
     this.notice.querySelector('#tour-notice-play')!.addEventListener('click',()=>{
