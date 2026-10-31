@@ -15,8 +15,10 @@ export class VesselDynamics {
   readonly state: VesselState;
   readonly previous: VesselState;
   private engines: Engine[] = [{ value:0,gear:0,neutral:0 },{ value:0,gear:0,neutral:0 }];
-  constructor(spawn: {x:number;z:number;heading:number} = this.parameters.spawn) {
-    this.state={...spawn,surge:0,sway:0,yawRate:0,port:0,starboard:0,rudder:0};
+  constructor(spawn?: {x:number;z:number;heading:number}) {
+    // Resolve the default after class fields initialize, including Safari-targeted builds.
+    const pose=spawn??this.parameters.spawn;
+    this.state={...pose,surge:0,sway:0,yawRate:0,port:0,starboard:0,rudder:0};
     this.previous={...this.state};
   }
   reset(pose:{x:number;z:number;heading:number}=this.parameters.spawn):void {
