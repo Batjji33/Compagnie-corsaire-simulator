@@ -18,8 +18,8 @@ libre alimentent les statistiques locales.
 ## Service Saint-Malo ↔ Dinard
 
 1. **Préparation** : consulter le trajet suggéré, les conditions et le départ de
-   14 h. Compter environ 5–6 minutes de jeu pour une
-   traversée menée sans incident. Le temps physique reste à 1× et la baie conserve
+   14 h. Chaque traversée dispose de 6 minutes, quel que soit le navire choisi.
+   Le temps physique reste à 1× et la baie conserve
    son échelle ; le temps final dépend des manœuvres et de la vitesse choisie.
 2. **Embarquement** : charger 180 passagers en 18 secondes. Le bateau est amarré,
    la propulsion bloquée et les caméras restent accessibles.
@@ -53,9 +53,11 @@ libre alimentent les statistiques locales.
    Seuls les débarquements terminés comptent ; arrêter en cours de trajet ne compte
    pas les voyageurs encore à bord. Annuler la confirmation reprend le même service.
 
-L’horloge HH:mm apparaît sous le chronomètre de créneau. Chaque traversée dispose
-de 6 minutes ; à expiration, le compteur démarre automatiquement un nouveau créneau
-et le retard augmente jusqu’à l’accostage, sans changer la destination. Le journal
+L’horloge HH:mm apparaît sous le chronomètre. Le compteur alterne 6 minutes de
+traversée et 2 minutes d’escale, même en attente de cale, puis repart sur 6 minutes.
+La destination reste celle du trajet en cours jusqu’à l’accostage et la fin de
+l’escale réelle. Le retard augmente jusqu’à l’accostage ; « À l’heure », « En avance »,
+« En retard » et « En escale » restent affichés selon la situation réelle. Le journal
 présente les horaires, le temps de navigation, les escales et les retards cumulés.
 Chaque rotation prévoit 6 minutes de navigation puis 2 minutes d’escale ; le bateau
 ne repart donc pas toutes les 6 minutes. Un départ volontairement tardif consomme
