@@ -1,4 +1,3 @@
-import type { ShipId } from '../ships/parameters';
 import { ACESFilmicToneMapping, PerspectiveCamera, Scene, SRGBColorSpace, WebGLRenderer, Vector3, TOUCH } from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -73,14 +72,6 @@ export class World {
     this.trafficView=new TrafficView(this.traffic);this.scene.add(this.trafficView.root);
     this.passengerView=new PassengerView(this.vessel,this.passengers);this.scene.add(this.passengerView.quay);
   }
-  selectShip(id:ShipId):void {
-    this.passengerView.detach();
-    this.vessel.selectShip(id);this.camera.add(this.vessel.model.cockpit);
-    this.passengers.capacity=this.vessel.parameters.passengers;
-    this.traffic.playerBoat=this.traffic.taxis.playerBoat=this.vessel.parameters;
-    this.wake.trail.parameters=this.vessel.parameters;this.resetWaterEffects();
-    this.passengerView.attach();this.setCameraMode('external');
-  }
   resetCamera(): void {
     this.setCameraMode('external');
   }
@@ -123,7 +114,6 @@ export class World {
   resetWaterEffects():void {this.wake.trail.clear();}
   render(dt: number, time: number, alpha=1): void {
     this.vessel.render(time,alpha);
-    if('setDetail' in this.vessel.model)this.vessel.model.setDetail(this.camera.position.distanceTo(this.vessel.root.position)<130);
     this.trafficView.root.visible=this.traffic.enabled;
     this.trafficView.render(this.vessel.marine.tide,time,this.camera.position,this.vessel.water,this.vessel.waterOffset);
     this.passengerView.render(dt,time);

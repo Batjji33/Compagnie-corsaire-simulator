@@ -1,4 +1,3 @@
-import type { BoatParameters } from '../ships/parameters.ts';
 import { BOAT, KNOT, clamp } from '../ships/parameters.ts';
 import { BAY, LANDS, ROCKS, DOCKS, inside } from '../world/geography.ts';
 import type { VesselState } from '../physics/VesselDynamics.ts';
@@ -60,7 +59,6 @@ export function trafficDensity(hour:number,waves:number,visibility:number):numbe
   const daytime=hour>=8&&hour<20;return 3*(visibility<1800?3:waves>1.5?4:daytime?8:3);
 }
 export class Traffic {
-  playerBoat:BoatParameters=BOAT;
   enabled=true;limit:number=TRAFFIC_LIMITS.medium;targetCount:number=TRAFFIC_LIMITS.medium;risk:TrafficRisk|undefined;elapsed=0;
   readonly agents:TrafficAgent[]=TRAFFIC_ROUTES.map((route,i)=>{
     const index=i===3||i>=8?0:i%route.points.length,p=route.points[index],next=(index+1)%route.points.length,q=route.points[next];
@@ -119,7 +117,7 @@ export class Traffic {
       if(a.taxi)continue;
       const distance=Math.hypot(a.x-player.x,a.z-player.z);
       if(!this.enabled||(count>this.targetCount&&distance>650)){if(a.active)count--;a.active=false;}
-      else if(!a.active&&count<this.targetCount&&distance>180+(this.playerBoat.length+a.route.length)/2&&navigable(a.x,a.z,a.route.length/2)&&this.agents.every(b=>!b.active||Math.hypot(a.x-b.x,a.z-b.z)>60+(a.route.length+b.route.length)/2)){a.active=true;count++;}
+      else if(!a.active&&count<this.targetCount&&distance>180+(BOAT.length+a.route.length)/2&&navigable(a.x,a.z,a.route.length/2)&&this.agents.every(b=>!b.active||Math.hypot(a.x-b.x,a.z-b.z)>60+(a.route.length+b.route.length)/2)){a.active=true;count++;}
       if(!a.active)continue;
       a.aiTime-=dt;
       if(a.aiTime<=0){this.steer(a,player,waves,visibility);a.aiTime=distance>1200?.5:.1;}
@@ -153,7 +151,7 @@ export class Traffic {
     const pv=this.playerVelocity(player);
     for(let i=-1;i<this.agents.length;i++){
       const other=i<0?undefined:this.agents[i];if(other===a||(other&&!other.active))continue;
-      const b=other??pv,clearance=35+(route.length+(other?.route.length??this.playerBoat.length))/2,distance=Math.hypot(a.x-b.x,a.z-b.z);
+      const b=other??pv,clearance=35+(route.length+(other?.route.length??BOAT.length))/2,distance=Math.hypot(a.x-b.x,a.z-b.z);
       if(distance>Math.max(300,clearance*4))continue;
       const cpa=closestApproach(a,b,route.kind==='cargo'?55:28),near=distance<clearance;
       if((cpa.closing&&cpa.distance<clearance)||near){a.desiredHeading+=.65;a.desiredSpeed*=.35;a.avoiding=true;break;}
@@ -172,20 +170,19 @@ export class Traffic {
     this.risk=undefined;const p=this.playerVelocity(player);
     for(const a of this.agents){if(!a.active)continue;
       const distance=Math.hypot(a.x-p.x,a.z-p.z),cpa=closestApproach(p,a);
-      if(distance<450&&((cpa.closing&&cpa.distance<45+a.route.length/2)||distance<25+(this.playerBoat.length+a.route.length)/2)){
+      if(distance<450&&((cpa.closing&&cpa.distance<45+a.route.length/2)||distance<25+(BOAT.length+a.route.length)/2)){
         if(!this.risk||cpa.seconds<this.risk.seconds)this.risk={id:a.route.id,name:a.route.name,distance,cpa:cpa.distance,seconds:cpa.seconds};
       }
     }
   }
   contacts(s:VesselState):TrafficContact {
     const r=this.contact;r.x=r.z=r.yaw=r.impact=0;r.label='';const pv=this.playerVelocity(s);
-    for(const a of this.agents){if(!a.active||Math.hypot(a.x-s.x,a.z-s.z)>this.playerBoat.length+a.route.length)continue;
+    for(const a of this.agents){if(!a.active||Math.hypot(a.x-s.x,a.z-s.z)>BOAT.length+a.route.length)continue;
       const sin=Math.sin(a.heading),cos=Math.cos(a.heading),half=Math.max(0,(a.route.length-a.route.beam)/2);
-      const playerHalf=this.playerBoat.catamaran?(this.playerBoat.length-this.playerBoat.beam)/2:9;
-      for(const forward of [-playerHalf,0,playerHalf]){
+      for(const forward of [-9,0,9]){
         const x=s.x+Math.sin(s.heading)*forward,z=s.z-Math.cos(s.heading)*forward;
         const along=clamp((x-a.x)*sin-(z-a.z)*cos,-half,half),qx=a.x+sin*along,qz=a.z-cos*along;
-        const dx=x-qx,dz=z-qz,distance=Math.hypot(dx,dz),penetration=(this.playerBoat.beam+a.route.beam)/2-distance;
+        const dx=x-qx,dz=z-qz,distance=Math.hypot(dx,dz),penetration=(BOAT.beam+a.route.beam)/2-distance;
         if(penetration<=0)continue;
         const rvx=pv.vx-a.vx,rvz=pv.vz-a.vz,relativeSpeed=Math.hypot(rvx,rvz);
         const nx=distance>1e-6?dx/distance:relativeSpeed>1e-6?-rvx/relativeSpeed:Math.cos(s.heading),nz=distance>1e-6?dz/distance:relativeSpeed>1e-6?-rvz/relativeSpeed:Math.sin(s.heading);

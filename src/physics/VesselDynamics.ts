@@ -1,4 +1,3 @@
-import type { BoatParameters } from '../ships/parameters.ts';
 import { BOAT, KNOT, clamp, engineCommand } from '../ships/parameters.ts';
 export interface HelmCommand { port: number; starboard: number; rudder: number }
 export interface VesselState {
@@ -9,19 +8,16 @@ interface Engine { value: number; gear: number; neutral: number }
 export interface ExternalForce { x:number; z:number; yaw:number }
 /** Planar body-axis dynamics: surge forward, sway starboard, heading clockwise from north. */
 export class VesselDynamics {
-  parameters:BoatParameters=BOAT;
   powerFactor=1;
   readonly command: HelmCommand = { port: 0, starboard: 0, rudder: 0 };
   readonly state: VesselState;
   readonly previous: VesselState;
   private engines: Engine[] = [{ value:0,gear:0,neutral:0 },{ value:0,gear:0,neutral:0 }];
-  constructor(spawn?: {x:number;z:number;heading:number}) {
-    // Resolve the default after class fields initialize, including Safari-targeted builds.
-    const pose=spawn??this.parameters.spawn;
-    this.state={...pose,surge:0,sway:0,yawRate:0,port:0,starboard:0,rudder:0};
+  constructor(spawn: {x:number;z:number;heading:number} = BOAT.spawn) {
+    this.state={...spawn,surge:0,sway:0,yawRate:0,port:0,starboard:0,rudder:0};
     this.previous={...this.state};
   }
-  reset(pose:{x:number;z:number;heading:number}=this.parameters.spawn):void {
+  reset(pose:{x:number;z:number;heading:number}=BOAT.spawn):void {
     Object.assign(this.state,pose,{surge:0,sway:0,yawRate:0,port:0,starboard:0,rudder:0});
     Object.assign(this.previous,this.state);this.setCommand({port:0,starboard:0,rudder:0});
     this.engines=[{value:0,gear:0,neutral:0},{value:0,gear:0,neutral:0}];
@@ -40,11 +36,11 @@ export class VesselDynamics {
     let target=requested;
     if(reversing) {
       target=0;
-      if(Math.abs(engine.value)<.02) {engine.value=0;engine.gear=0;engine.neutral=this.parameters.shiftNeutralTime;}
+      if(Math.abs(engine.value)<.02) {engine.value=0;engine.gear=0;engine.neutral=BOAT.shiftNeutralTime;}
     }
     if(engine.neutral>0) {engine.neutral=Math.max(0,engine.neutral-dt);target=0;}
     else if(!reversing&&desired!==0)engine.gear=desired;
-    engine.value+=(target-engine.value)*(1-Math.exp(-dt/this.parameters.engineResponse));
+    engine.value+=(target-engine.value)*(1-Math.exp(-dt/BOAT.engineResponse));
     return engine.value;
   }
   step(dt:number,external:ExternalForce={x:0,z:0,yaw:0}):void {
@@ -52,24 +48,23 @@ export class VesselDynamics {
     Object.assign(this.previous,this.state);
     const s=this.state;
     s.port=this.engine(0,this.command.port,dt);s.starboard=this.engine(1,this.command.starboard,dt);
-    const target=this.command.rudder*this.parameters.rudderMaxDegrees*Math.PI/180;
-    const rudderStep=this.parameters.rudderRateDegrees*Math.PI/180*dt;
+    const target=this.command.rudder*BOAT.rudderMaxDegrees*Math.PI/180;
+    const rudderStep=BOAT.rudderRateDegrees*Math.PI/180*dt;
     s.rudder+=clamp(target-s.rudder,-rudderStep,rudderStep);
-    const thrust=(lever:number)=>this.parameters.engineThrust*this.powerFactor*lever*(lever<0?this.parameters.reverseEfficiency:1);
-    const port=thrust(s.port),starboard=thrust(s.starboard),speed=this.parameters.maxSpeedKnots*KNOT;
-    const dragForward=(2*this.parameters.engineThrust-this.parameters.surgeLinearDrag*speed)/(speed*speed);
-    const dragReverse=(2*this.parameters.engineThrust*this.parameters.reverseEfficiency-this.parameters.surgeLinearDrag*this.parameters.reverseMaxSpeed)/(this.parameters.reverseMaxSpeed**2);
-    const drag=this.parameters.surgeLinearDrag*s.surge+(s.surge>=0?dragForward:dragReverse)*s.surge*Math.abs(s.surge);
-    const rudderForce=-this.parameters.rudderLift*s.surge*Math.abs(s.surge)*Math.sin(s.rudder);
-    const lateralDrag=this.parameters.swayLinearDrag*s.sway+this.parameters.swayQuadraticDrag*s.sway*Math.abs(s.sway);
-    const yawDrag=(this.parameters.yawLinearDrag+this.parameters.yawSpeedDrag*Math.abs(s.surge))*s.yawRate+this.parameters.yawQuadraticDrag*s.yawRate*Math.abs(s.yawRate);
+    const thrust=(lever:number)=>BOAT.engineThrust*this.powerFactor*lever*(lever<0?BOAT.reverseEfficiency:1);
+    const port=thrust(s.port),starboard=thrust(s.starboard),speed=BOAT.maxSpeedKnots*KNOT;
+    const dragForward=(2*BOAT.engineThrust-BOAT.surgeLinearDrag*speed)/(speed*speed);
+    const dragReverse=(2*BOAT.engineThrust*BOAT.reverseEfficiency-BOAT.surgeLinearDrag*BOAT.reverseMaxSpeed)/(BOAT.reverseMaxSpeed**2);
+    const drag=BOAT.surgeLinearDrag*s.surge+(s.surge>=0?dragForward:dragReverse)*s.surge*Math.abs(s.surge);
+    const rudderForce=-BOAT.rudderLift*s.surge*Math.abs(s.surge)*Math.sin(s.rudder);
+    const lateralDrag=BOAT.swayLinearDrag*s.sway+BOAT.swayQuadraticDrag*s.sway*Math.abs(s.sway);
+    const yawDrag=(BOAT.yawLinearDrag+BOAT.yawSpeedDrag*Math.abs(s.surge))*s.yawRate+BOAT.yawQuadraticDrag*s.yawRate*Math.abs(s.yawRate);
     const forwardForce=Math.sin(s.heading)*external.x-Math.cos(s.heading)*external.z;
     const sideForce=Math.cos(s.heading)*external.x+Math.sin(s.heading)*external.z;
-    const du=(port+starboard-drag+forwardForce)/this.parameters.mass+s.yawRate*s.sway;
-    const dv=(rudderForce-lateralDrag+sideForce)/this.parameters.mass-s.yawRate*s.surge;
-    const dr=((port-starboard)*this.parameters.engineArm-rudderForce*this.parameters.rudderArm-yawDrag+external.yaw)/this.parameters.yawInertia;
+    const du=(port+starboard-drag+forwardForce)/BOAT.mass+s.yawRate*s.sway;
+    const dv=(rudderForce-lateralDrag+sideForce)/BOAT.mass-s.yawRate*s.surge;
+    const dr=((port-starboard)*BOAT.engineArm-rudderForce*BOAT.rudderArm-yawDrag+external.yaw)/BOAT.yawInertia;
     s.surge+=du*dt;s.sway+=dv*dt;s.yawRate+=dr*dt;
-    if(this.parameters.speedLimitKnots){const magnitude=Math.hypot(s.surge,s.sway),limit=this.parameters.speedLimitKnots*KNOT;if(magnitude>limit){s.surge*=limit/magnitude;s.sway*=limit/magnitude;}}
     // Heading stays unwrapped to interpolate smoothly across north.
     s.heading+=s.yawRate*dt;
     s.x+=(Math.sin(s.heading)*s.surge+Math.cos(s.heading)*s.sway)*dt;

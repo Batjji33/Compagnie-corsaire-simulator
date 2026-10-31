@@ -52,11 +52,10 @@ export class WakeView {
     const trail=this.trail;this.mesh.visible=trail.count>1;if(!this.mesh.visible)return;
     for(let row=0;row<trail.count;row++){
       const s=trail.at(row),age=Math.max(0,time-s.time),fade=Math.max(0,1-age/WAKE_LIFETIME),speed=Math.min(1,s.speed/10);
-      const catamaran=trail.parameters.catamaran===true;
-      const width=catamaran?.9+s.speed*.12+age*.08:2+s.speed*.35+age*.12,spread=(catamaran?2.8:3)+s.speed*age*.34;
+      const width=2+s.speed*.35+age*.12,spread=3+s.speed*age*.34;
       for(let band=0;band<3;band++){
-        const side=band===0?0:band===1?-1:1,offset=side*spread,half=band===0?width:(catamaran?.8:.45)+speed*.8+age*.025;
-        const strength=band===0?(catamaran?.035:.045+speed*.64+s.power*.1):(catamaran?.12+speed*.5+s.power*.1:speed*speed*.56);
+        const side=band===0?0:band===1?-1:1,offset=side*spread,half=band===0?width:.45+speed*.8+age*.025;
+        const strength=band===0?(.045+speed*.64+s.power*.1):speed*speed*.56;
         for(let edge=0;edge<3;edge++){
           const v=(band*WAKE_CAPACITY*3+row*3+edge)*3,lateral=offset+(edge-1)*half;
           this.positions[v]=s.x-s.dz*lateral+marine.currentX*age*.35;this.positions[v+1]=0;this.positions[v+2]=s.z+s.dx*lateral+marine.currentZ*age*.35;
