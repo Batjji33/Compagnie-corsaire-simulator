@@ -60,3 +60,20 @@ Comparaison visuelle de profil et perspective effectuée. Corrections : renfonce
 Phase 2 livrée comme modèle d'étude inspectable à fidélité partielle. Plans de formes, garages détaillés et couverture photographique multi-angles restent nécessaires pour une reproduction plus fidèle. Aucune phase suivante, mission ferry, physique de ferry ou circulation automobile développée.
 
 Captures du modèle : [perspective](images/brittany-saint-malo.jpg), [profil](images/brittany-saint-malo-profile.jpg).
+
+## Phase 3 — Géographie et traversée de la Manche
+
+- [x] Analyse des coordonnées locales, terrains, atlas marin, ports, caméra et contacts existants.
+- [x] Fond régional Natural Earth, sources portuaires officielles, limites et provenance documentées dans [CHANNEL.md](CHANNEL.md).
+- [x] Naye enrichi en surcouche ; Portsmouth, entrée, Portsea/Gosport, terminal international, quais, base portuaire et repères principaux.
+- [x] Jersey, Guernesey, Sercq, Aurigny, Cotentin et île de Wight positionnés dans la projection régionale ; aucune escale imposée.
+- [x] Route continue d'environ 294 km, réservations grands ferries, reconnaissance guidée et conduite manuelle provisoire.
+- [x] Carte de la Manche, radar côtier, GPS et collisions cohérents dans cette reconnaissance ; zones et sauvegardes Corsaire préservées.
+- [x] Origine de rendu flottante, compensation des vagues, chargement avec hystérésis au-delà de la brume et libération des ressources.
+- [x] Approches, empreinte complète du ferry, parcours complet, collisions, continuité et chargement aller/retour vérifiés.
+
+Décisions : aucun changement global des distances Corsaire ; extension accessible depuis son propre écran de reconnaissance, basée sur les composants existants. Calibration manuelle de ferry provisoire seulement. Pas de système de véhicules, de mission commerciale ni de gestion portuaire ajoutés.
+
+Limites : géographie Corsaire locale approximative conservée, fond régional à petite échelle (1:10 millions), ports et relief interprétés, profondeurs et balisage fictifs. Requête Overpass refusée (HTTP 406), aucune donnée de cette requête utilisée. iPad physique indisponible. L'interface et la documentation indiquent explicitement que les cartes ne servent pas à la navigation réelle.
+
+Validation finale phase 3 : `npm run build` réussi (TypeScript + Vite, cible Safari 15) ; `npm test` : **156 réussis, 0 échec**. Avertissement non bloquant du bundle principal > 650 kB conservé. Module de reconnaissance chargé à la demande : environ 28 kB minifiés / 11,4 kB gzip. `git diff --check` sans erreur. Captures et détails de reproduction dans [CHANNEL.md](CHANNEL.md).

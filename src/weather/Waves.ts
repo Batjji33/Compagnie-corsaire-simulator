@@ -86,3 +86,9 @@ export const WAVE_GLSL=`
     return y;
   }
 `;
+
+/** Rebase only GPU phases, leaving the double-precision simulation and original field intact. */
+export function relativeWavePhases(water:WaveField,offset:number,origin:{x:number;z:number},out:Float32Array):void {
+ water.renderPhases(offset,out);
+ for(let i=0;i<WAVE_COUNT;i++){const j=i*4,c=water.components;out[i*2]-=(c[j+2]*(c[j]*origin.x+c[j+1]*origin.z))%(Math.PI*2);}
+}
