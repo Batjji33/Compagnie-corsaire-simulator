@@ -32,6 +32,7 @@ async function boot():Promise<void> {
   helm=new HelmControls(world.vessel.dynamics,(mode)=>{world.setCameraMode(mode);ui.setShipView();helm.refresh();},()=>world.vesselCamera.mode);
   const marinePanel=new MarinePanel(world.vessel,world.traffic);
   loop = new SimulationLoop((dt) => {game.update(dt);}, (dt, time, alpha) => {
+    if(document.querySelector('.ferry-inspector'))return;
     world.render(dt, time, alpha);
     marinePanel.update(dt);
     helm.render(dt);
