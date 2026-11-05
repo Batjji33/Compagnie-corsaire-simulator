@@ -82,7 +82,7 @@ export class Game {
     this.dialog.addEventListener('click',e=>{
       const button=(e.target as HTMLElement).closest<HTMLButtonElement>('[data-action]');if(!button)return;
       const action=button.dataset.action!;
-      if(action==='channel-voyage'||action==='channel-portsmouth'){void import('./ChannelVoyage').then(m=>m.openChannelVoyage(action==='channel-portsmouth')).catch(()=>{this.dialog.querySelector('.game-storage')!.textContent='Chargement de la Manche impossible.';});return;}
+      if(action==='channel-voyage'||action==='channel-portsmouth'){void import('./ChannelVoyage').then(m=>m.openChannelVoyage(action==='channel-portsmouth',this.store.data.immersion.audio)).catch(()=>{this.dialog.querySelector('.game-storage')!.textContent='Chargement de la Manche impossible.';});return;}
       if(action==='inspect-brittany'){void import('./FerryInspector').then(m=>m.inspectBrittanyFerry()).catch(()=>{this.dialog.querySelector('.game-storage')!.textContent='Impossible de charger le modèle. Réessayez.';});return;}
       if(action==='resume')this.resume();else if(action==='resume-saved'){this.started=false;this.resume();}else if(action==='start-free')this.startFree();else if(action==='start-mission')this.prepare(MISSIONS.find(d=>d.id===button.dataset.mission)??MALO_DINARD);
       else if(action==='board'){this.mission?.board();this.launch();if(this.service)this.immersion.announce(`Embarquement pour ${this.service.destinationName}.`);}

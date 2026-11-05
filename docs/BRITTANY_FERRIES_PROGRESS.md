@@ -101,3 +101,19 @@ Captures examinées aux formats 1440 × 900, 768 × 1024 et 390 × 844. Poste ce
 L'arrêt précédent venait d'une indisponibilité du service de revue automatique (quota), qui empêchait un dernier lancement de navigateur. La reprise du 5 novembre a permis les vérifications restantes.
 
 Résultat final phase 4 : **`npm run build` réussi et 165 tests réussis, aucun échec**. Avertissement non bloquant du bundle principal > 650 kB conservé. Le module de pilotage et passerelle est chargé à la demande (~40 kB minifiés, ~15,5 kB gzip). Aucune dépendance ajoutée. Catalogue Brittany Ferries marqué pilotable ; les missions Corsaire gardent leur catalogue historique.
+
+## Phase 5 — Trafic maritime IA
+
+- [x] Analyse des commits des phases 2–4, du trafic, des modèles, de la corne et des réservations existants.
+- [x] Flotte régionale variée et à l'échelle commune : grands cargos, porte-conteneurs de 310 m, ferries, voiliers, plaisanciers ; deux services britanniques interprétés.
+- [x] Routes continues vérifiées, vitesses, inertie et rotation par catégorie, prévision des rapprochements et distinction entre maintien de route et manœuvre.
+- [x] Réactions à la corne différenciées, synthèse et volumes existants réutilisés ; contacts des coques complètes, radar et carte mis à jour.
+- [x] Réservations de quais et services Corsaire conservés ; moteur `Berths` réutilisé pour les postes du grand ferry.
+- [x] Horloge commune ×1/×2/×4/×8 ; simulation distante simplifiée, densité réglable et LOD de silhouette pour les grands navires.
+- [x] Tests de croisement, face à face, contacts, ports, temps accéléré et navigation prolongée ; examen en navigateur.
+
+Décision : la Manche reçoit `ChannelTraffic`, en partageant types, prévision, rendu, son et réservations ; le comportement des missions Corsaire demeure celui du moteur historique. Les circuits de trafic ambiant et services britanniques sont fictifs. Limites et provenance : [CHANNEL_TRAFFIC.md](CHANNEL_TRAFFIC.md). Un chevauchement initial entre deux agents a été détecté par le test prolongé puis corrigé par la sélection de positions initiales séparées. Aucun blocage sur dix minutes dans le scénario de validation corrigé. Les cas d'urgence gardent un arrêt anti-pénétration, sans simuler une déformation de coque.
+
+La phase suivante n'est pas commencée ; aucune fusion dans develop et aucun déploiement.
+
+Validation finale phase 5 : `npm run build` réussi ; **174 tests réussis, 0 échec**, dont les missions et accostages Corsaire. Avertissement non bloquant du bundle principal > 650 kB conservé. Module Manche chargé à la demande : environ 47,2 kB minifiés / 18,2 kB gzip. `git diff --check` sans erreur. Aucun test Safari/iPad physique et aucun déploiement.

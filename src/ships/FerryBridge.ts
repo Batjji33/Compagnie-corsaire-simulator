@@ -43,9 +43,9 @@ export class FerryBridge {
    const chart=kind==='radar'||kind==='map'?new ChannelChart(canvas):undefined;if(chart)chart.radar=kind==='radar';this.displays.push({canvas,texture,kind,chart});
   }
  }
- update(d:FerryDynamics):void{
+ update(d:FerryDynamics,traffic:readonly {x:number;z:number;heading:number;active:boolean}[]=[]):void{
   const s=d.state,p=d.plant,geo=unproject(s.x,s.z),heading=((s.heading*180/Math.PI)%360+360)%360;
-  for(const display of this.displays){if(display.chart)display.chart.draw(s);else{
+  for(const display of this.displays){if(display.chart)display.chart.draw(s,traffic);else{
    const c=display.canvas.getContext('2d')!;c.fillStyle='#10262c';c.fillRect(0,0,512,256);c.fillStyle='#bde5d6';c.font='27px sans-serif';
    const lines=display.kind==='energy'?['ÉNERGIE · '+p.mode.toUpperCase(),`BAT ${(p.soc*100).toFixed(1)} % · ${(p.deliveredKW/1000).toFixed(2)} MW`,`GNL ${p.fuelKgHour.toFixed(0)} kg/h`,`B ${Math.round(s.port*100)} % / T ${Math.round(s.starboard*100)} %`]:[
     `CAP ${heading.toFixed(1)}° · SOG ${(d.groundSpeed*3600/1852).toFixed(1)} nd`,`${geo.lat.toFixed(4)} N  ${Math.abs(geo.lon).toFixed(4)} O`,

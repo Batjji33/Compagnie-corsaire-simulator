@@ -1,8 +1,10 @@
 ﻿import { CHANNEL_LENGTH, ferryContact, CHANNEL_BERTHS, navigationZone, routePose } from '../world/ChannelGeography.ts';
 import { FerryDynamics } from '../physics/FerryDynamics.ts';
+import { ChannelTraffic } from '../traffic/ChannelTraffic.ts';
 import { KNOT } from '../ships/parameters.ts';
 /** Legacy guided reconnaissance plus a separately powered, ferry-only manual simulation. */
 export class ChannelNavigation {
+ readonly traffic=new ChannelTraffic();
  readonly dynamics=new FerryDynamics(routePose(0));
  distance=0;
  requestedRate=1;
@@ -19,14 +21,14 @@ export class ChannelNavigation {
  toggleCharge():boolean {const p=this.dynamics.plant;if(p.shore){p.shore=false;return true;}if(!this.canCharge)return false;p.shore=true;return true;}
  get state(){return this.dynamics.state;}
  get zone(){return navigationZone(this.state.x,this.state.z);}
- get rate(){return this.guided?Math.min(this.requestedRate,this.zone==='port'?4:this.zone==='approach'?16:128):1;}
+ get rate(){return this.guided?Math.min(this.requestedRate,this.zone==='port'?4:this.zone==='approach'?16:128):Math.max(1,Math.min(8,this.requestedRate));}
  private pose(distance:number){const p=routePose(distance),before=routePose(distance-60),after=routePose(distance+60);p.heading=Math.atan2(after.x-before.x,before.z-after.z);return p;}
  advance(realDt:number):void {
   if(!this.running)return;
   // Bounded steps: no accelerated movement can jump through a pier or coast.
   let remaining=Math.min(.1,Math.max(0,realDt))*this.rate;
   while(remaining>1e-8){const dt=Math.min(remaining,.1);remaining-=dt;
-   const old={...this.state};
+   const old={...this.state};if(!this.guided)this.traffic.update(dt,this.state);
    if(this.guided){
     const speed=(this.zone==='port'?8:this.zone==='approach'?16:23)*KNOT;
     const next=Math.min(CHANNEL_LENGTH,this.distance+speed*dt),p=this.pose(next);
@@ -35,7 +37,7 @@ export class ChannelNavigation {
     this.distance=next;Object.assign(this.state,p,{surge:speed,sway:0,yawRate:0});
     if(next===CHANNEL_LENGTH){this.state.surge=0;this.running=false;}
    }else{
-    this.dynamics.step(dt);const s=this.state,hit=ferryContact(s.x,s.z,s.heading);
+    this.dynamics.step(dt);const s=this.state,hit=ferryContact(s.x,s.z,s.heading)??this.traffic.contact(s);
     if(hit){Object.assign(s,old,{surge:0,sway:0,yawRate:0});this.dynamics.setCommand({port:0,starboard:0,rudder:0});this.dynamics.bowCommand=0;this.dynamics.groundSpeed=0;this.collision=hit;this.running=false;return;}
    }
   }
