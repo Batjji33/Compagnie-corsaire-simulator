@@ -7,7 +7,7 @@ import type { TaxiState } from './WaterTaxis.ts';
 import type { PortId } from './Berths.ts';
 
 export type TrafficKind='sail'|'pleasure'|'ferry'|'launch'|'cargo';
-export interface TrafficRoute {id:string;name:string;kind:TrafficKind;knots:number;length:number;beam:number;loop?:boolean;taxi?:boolean;points:readonly (readonly [number,number])[]}
+export interface TrafficRoute {id:string;name:string;kind:TrafficKind;knots:number;length:number;beam:number;loop?:boolean;taxi?:boolean;cargoStyle?:'container'|'bulk';points:readonly (readonly [number,number])[]}
 export const TRAFFIC_LIMITS={low:18,medium:24,high:24} as const;
 export const TRAFFIC_TURN_RATE={sail:.12,pleasure:.22,ferry:.1,launch:.24,cargo:.025} as const;
 export const TRAFFIC_ROUTES:TrafficRoute[]=[

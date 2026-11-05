@@ -1,0 +1,50 @@
+{
+  "date": "2026-11-05T18:50:07.220Z",
+  "platform": "win32",
+  "samples": [
+    {
+      "fps": "Qualité medium · 30.0 FPS observés · 88 appels de dessin",
+      "error": "",
+      "gps": "GPS de jeu 48.6404° N · 2.0247° O\nSOG 0.0 nd · eau 0.0 nd · cap 0.0° · fond fictif 12 m",
+      "resources": 280331,
+      "heapMiB": 10.3822021484375,
+      "name": "Naye",
+      "viewport": [
+        1440,
+        900
+      ]
+    },
+    {
+      "fps": "Qualité medium · 30.0 FPS observés · 47 appels de dessin",
+      "error": "",
+      "gps": "GPS de jeu 50.8180° N · 1.0935° O\nSOG 0.0 nd · eau 0.0 nd · cap 90.0° · fond fictif 12 m",
+      "resources": 280331,
+      "heapMiB": 26.12503433227539,
+      "name": "Portsmouth",
+      "viewport": [
+        768,
+        1024
+      ]
+    },
+    {
+      "fps": "Qualité medium · 30.0 FPS observés · 25 appels de dessin",
+      "error": "",
+      "gps": "GPS de jeu 49.8724° N · 1.9299° O\nSOG 18.5 nd · eau 18.5 nd · cap 43.0° · fond fictif 60 m",
+      "resources": 280331,
+      "heapMiB": 24.944225311279297,
+      "name": "Large x8",
+      "viewport": [
+        768,
+        1024
+      ]
+    }
+  ],
+  "load": 1145.0999999996275,
+  "gpu": "ANGLE (Intel, Intel(R) UHD Graphics (0x0000A7A9) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "afterClose": [
+    7.599201202392578,
+    7.675865173339844,
+    7.744056701660156
+  ],
+  "errors": []
+}

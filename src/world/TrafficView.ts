@@ -1,7 +1,7 @@
 import { Group, Mesh, MeshStandardMaterial, BoxGeometry, CylinderGeometry, ConeGeometry, BufferGeometry, Float32BufferAttribute, DoubleSide, Color, CanvasTexture, PlaneGeometry, SRGBColorSpace } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { loft } from '../ships/ShipGeometry';
-import type { Traffic, TrafficAgent } from '../traffic/Traffic';
+import type { TrafficAgent } from '../traffic/Traffic';
 import type { WaveField } from '../weather/Waves';
 import { CorsaireModel } from '../ships/CorsaireModel';
 import { TAXI_LIVERIES } from '../traffic/WaterTaxis';
@@ -9,12 +9,12 @@ import { TaxiPassengerView } from './TaxiPassengerView';
 
 export class TrafficView {
   readonly root=new Group();
-  private boats:{root:Group;details:Group;agent:TrafficAgent;passengers?:TaxiPassengerView}[]=[];
+  private boats:{root:Group;details:Group;agent:TrafficAgent;coarse?:Group;hull?:Mesh;passengers?:TaxiPassengerView}[]=[];
   private geometries=new Set<BufferGeometry>();
   private material=new MeshStandardMaterial({vertexColors:true,roughness:.8,side:DoubleSide});
   private flotation={heave:0,pitch:0,roll:0};
   private taxiResources:{dispose():void}[]=[];
-  constructor(traffic:Traffic){
+  constructor(traffic:{agents:TrafficAgent[];taxis:{agents:TrafficAgent[]}},private channel=false){
     const colors=[0xe9e6da,0x588d8b,0x2d4856,0xe4a16b];
     const template=new CorsaireModel({exteriorOnly:true});template.root.updateMatrixWorld(true);
     for(const [i,a] of traffic.agents.entries()){
@@ -58,13 +58,14 @@ export class TrafficView {
         box(0,16.5,l*.32,b*.95,2,l*.16);
         box(b*.23,13,l*.44,b*.2,8,l*.06,colors[3]);
         box(0,16.5,l*.32-.081*l,b*.85,1.1,.2,colors[2],fine);
-        for(let row=0;row<3;row++)for(let column=0;column<5;column++){
-          const height=4.8+(column%2)*2.4;
-          box((row-1)*b*.27,6.1+height/2,-l*.33+column*l*.115,b*.24,height,l*.105,colors[(row+column+1)%4]);
+        const rows=this.channel?Math.max(3,Math.floor(b*.75/2.6)):3,columns=this.channel?Math.floor(l*.65/13):5;
+        for(let row=0;row<rows;row++)for(let column=0;column<columns;column++){
+          const height=a.route.cargoStyle==='bulk'?1.8:this.channel?7.8+(column%3)*2.6:4.8+(column%2)*2.4;
+          box(this.channel?(row-(rows-1)/2)*2.6:(row-1)*b*.27,6.1+height/2,-l*.33+column*(this.channel?13:l*.115),this.channel?2.44:b*.24,height,this.channel?12.2:l*.105,a.route.cargoStyle==='bulk'?0x68777b:colors[(row+column+1)%4]);
         }
         add(new CylinderGeometry(.18,.18,5,5).translate(0,20,l*.33),colors[2],fine);
       }else{
-        const ferry=a.route.kind==='ferry';box(0,ferry?2.2:1.7,-l*.05,b*.72,ferry?2:.9,l*.45);
+        const ferry=a.route.kind==='ferry';if(this.channel&&ferry){for(let deck=0;deck<3;deck++){box(0,3+deck*3,0,b*.85,2.6,l*.7);box(0,4+deck*3,-l*.35,b*.8,1,.2,colors[2],fine);}}box(0,ferry?2.2:1.7,-l*.05,b*.72,ferry?2:.9,l*.45);
         box(0,ferry?3.6:2.3,-l*.12,b*.62,.3,l*.5);
         if(ferry)box(0,4.3,-l*.23,b*.5,1.2,l*.2);
         box(0,ferry?2.6:1.9,-l*.1,b*.74,.45,l*.28,colors[2],fine);
@@ -77,18 +78,25 @@ export class TrafficView {
         const merged=mergeGeometries(geometries)!;geometries.forEach(g=>g.dispose());this.geometries.add(merged);parent.add(new Mesh(merged,this.material));
       };
       merge(parts,root);merge(fine,details);
+      const hull=root.children.find(o=>o instanceof Mesh) as Mesh|undefined;
+      let coarse:Group|undefined;
+      if(this.channel&&l>100){coarse=new Group();const simple:BufferGeometry[]=[];
+        add(loft([{z:-l/2,width:.15,bottom:-4,top:6},{z:-l*.3,width:b,bottom:-4,top:6},{z:l/2,width:b*.85,bottom:-4,top:6}]),0x344f61,simple);
+        add(new BoxGeometry(b*.8,20,l*.15).translate(0,16,l*.32),0xe9e6da,simple);merge(simple,coarse);root.add(coarse);
+      }
       const passengers=a.taxi?new TaxiPassengerView(a,root):undefined;
       if(passengers){details.add(passengers.deck);this.root.add(passengers.quay);}
-      root.add(details);root.name=a.route.name;this.root.add(root);this.boats.push({root,details,agent:a,passengers});
+      root.add(details);root.name=a.route.name;this.root.add(root);this.boats.push({root,details,agent:a,coarse,hull,passengers});
     }
     template.dispose();
   }
   render(tide:number,time:number,camera:{x:number;z:number},water:WaveField,offset:number):void {
     for(const b of this.boats){const a=b.agent,cargo=a.route.kind==='cargo',distance=Math.hypot(a.x-camera.x,a.z-camera.z);
-      b.root.visible=a.active&&distance<(cargo||a.taxi?6000:3000);
+      b.root.visible=a.active&&distance<(this.channel?24000:cargo||a.taxi?6000:3000);
       if(!b.root.visible){b.passengers?.render(time,false);continue;}
       if(distance<1500){water.hull(a.x,a.z,a.heading,a.route.length,a.route.beam,offset,this.flotation);b.root.position.set(a.x,tide+this.flotation.heave,a.z);b.root.rotation.set(this.flotation.pitch,-a.heading,this.flotation.roll,'YXZ');}
       else {b.root.position.set(a.x,tide+water.height(a.x,a.z,offset),a.z);b.root.rotation.set(0,-a.heading,0);}
+      if(b.coarse){b.coarse.visible=distance>5000;if(b.hull)b.hull.visible=distance<=5000;}
       b.details.visible=distance<(cargo?1800:900);
       b.passengers?.render(time,distance<600);
     }

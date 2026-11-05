@@ -1,23 +1,25 @@
-import { Color, Mesh, PlaneGeometry, ShaderMaterial, Float32BufferAttribute, Vector4, DoubleSide } from 'three';
+import { Color, Mesh, PlaneGeometry, ShaderMaterial, Float32BufferAttribute, Vector2, Vector4, DoubleSide } from 'three';
 import { CONFIG } from '../config';
 import type { Quality } from '../config';
 import { sunDirection } from '../weather/daylight';
-import { WaveField, WAVE_GLSL, WAVE_COUNT } from '../weather/Waves';
+import { WaveField, WAVE_GLSL, WAVE_COUNT, relativeWavePhases } from '../weather/Waves';
 import type { VesselState } from '../physics/VesselDynamics';
 import { createCoastAtlas } from './CoastAtlas';
 import { createFoamTexture } from './FoamTexture';
 
 export class Ocean {
+  private seaSize:number;
   private coast=createCoastAtlas();
   private foamTexture=createFoamTexture();
   readonly phases=new Float32Array(WAVE_COUNT*2);
   readonly material:ShaderMaterial;
   readonly mesh:Mesh<PlaneGeometry,ShaderMaterial>;
-  constructor(quality:Quality,water:WaveField){
+  constructor(quality:Quality,water:WaveField,size:number=CONFIG.sea.size){
+    this.seaSize=size;
     this.material=new ShaderMaterial({side:DoubleSide,
       uniforms:{uLight:{value:1},uTime:{value:0},uHeight:{value:.6},uTide:{value:0},uWaves:{value:water.components},uWavePhase:{value:this.phases},
         uSun:{value:sunDirection},uFog:{value:new Color(0xb5cbd1)},uFogNear:{value:CONFIG.weather.fogNear},uFogFar:{value:CONFIG.weather.fogFar},
-        uCoast:{value:this.coast.texture},uFoamNoise:{value:this.foamTexture},uBounds:{value:this.coast.bounds},uShip:{value:new Vector4()},uPower:{value:0}},
+        uCoast:{value:this.coast.texture},uFoamNoise:{value:this.foamTexture},uBounds:{value:this.coast.bounds.clone()},uShip:{value:new Vector4()},uPower:{value:0},uHull:{value:new Vector2(24.8,5)}},
       vertexShader:`
         ${WAVE_GLSL}
         uniform float uTide;
@@ -36,6 +38,7 @@ export class Ocean {
         uniform vec3 uSun,uFog;
         uniform sampler2D uCoast,uFoamNoise;
         uniform vec4 uBounds,uShip;
+        uniform vec2 uHull;
         uniform vec4 uWaves[${WAVE_COUNT}];
         uniform vec2 uWavePhase[${WAVE_COUNT}];
         varying vec3 vWorld,vNormal;
@@ -70,12 +73,13 @@ export class Ocean {
           float shoreFoam=shore*(.3+.7*pow(.5+.5*sin(p.x*.24+p.y*.33-uTime*1.6),3.));
           vec2 forward=vec2(sin(uShip.z),-cos(uShip.z)),right=vec2(-forward.y,forward.x),delta=p-uShip.xy;
           float signSpeed=uShip.w<-.15?-1.:1.,along=dot(delta,forward)*signSpeed,side=dot(delta,right);
-          float speed=abs(uShip.w),washLength=3.+speed*1.25+uPower*4.;
-          float aft=(-along-12.4)/washLength;
-          float wash=step(0.,aft)*(1.-smoothstep(.2,1.,aft))*exp(-side*side/(3.+aft*8.));
+          float scale=max(1.,uHull.y/5.);
+          float speed=abs(uShip.w),washLength=3.*scale+speed*1.25+uPower*4.*scale;
+          float aft=(-along-uHull.x*.5)/washLength;
+          float wash=step(0.,aft)*(1.-smoothstep(.2,1.,aft))*exp(-side*side/((3.+aft*8.)*scale*scale));
           float washPower=clamp(speed*.08+uPower*.55,0.,.9);
           float churn=smoothstep(.28,.72,foamNoise.x*.45+foamNoise.y*.55);
-          float bowDistance=(along-11.)/3.,bowSide=(abs(side)-2.5)/1.2;
+          float bowDistance=(along-uHull.x*.444)/max(3.,uHull.x*.04),bowSide=(abs(side)-uHull.y*.5)/(1.2*scale);
           float bow=exp(-bowDistance*bowDistance-bowSide*bowSide)*clamp((speed-.5)/8.,0.,.65);
           float foam=clamp(whitecaps+shoreFoam*.45+wash*washPower*churn+bow*.65,0.,.9);
           water=mix(water,vec3(.86,.92,.9),foam);water*=.18+.82*uLight;
@@ -89,18 +93,20 @@ export class Ocean {
   private geometry(quality:Quality):PlaneGeometry {
     const geometry=new PlaneGeometry(2,2,CONFIG.quality[quality].segments,CONFIG.quality[quality].segments);geometry.rotateX(-Math.PI/2);
     const p=geometry.getAttribute('position'),lod=new Float32Array(p.count);
-    const spread=(v:number)=>Math.sign(v)*(Math.abs(v)<=.625?Math.abs(v)/.625*120:120+Math.pow((Math.abs(v)-.625)/.375,3.2)*(CONFIG.sea.size/2-120));
+    const spread=(v:number)=>Math.sign(v)*(Math.abs(v)<=.625?Math.abs(v)/.625*120:120+Math.pow((Math.abs(v)-.625)/.375,3.2)*(this.seaSize/2-120));
     for(let i=0;i<p.count;i++){
       const x=spread(p.getX(i)),z=spread(p.getZ(i));p.setXYZ(i,x,0,z);lod[i]=Math.max(0,(Math.max(Math.abs(x),Math.abs(z))-150)/500);
     }
     geometry.setAttribute('aLod',new Float32BufferAttribute(lod,1));geometry.computeBoundingSphere();return geometry;
   }
   setQuality(quality:Quality):void {const old=this.mesh.geometry;this.mesh.geometry=this.geometry(quality);old.dispose();}
-  update(time:number,center:{x:number;z:number},water:WaveField,offset:number,tide:number,height:number,ship:VesselState):void {
-    water.renderPhases(offset,this.phases);this.material.uniforms.uTime.value=time;this.material.uniforms.uTide.value=tide;this.material.uniforms.uHeight.value=height;
-    this.material.uniforms.uShip.value.set(ship.x,ship.z,ship.heading,ship.surge);
+  update(time:number,center:{x:number;z:number},water:WaveField,offset:number,tide:number,height:number,ship:VesselState,origin={x:0,z:0}):void {
+    relativeWavePhases(water,offset,origin,this.phases);
+    this.material.uniforms.uBounds.value.set(this.coast.bounds.x-origin.x,this.coast.bounds.y-origin.z,this.coast.bounds.z,this.coast.bounds.w);
+    this.material.uniforms.uTime.value=time;this.material.uniforms.uTide.value=tide;this.material.uniforms.uHeight.value=height;
+    this.material.uniforms.uShip.value.set(ship.x-origin.x,ship.z-origin.z,ship.heading,ship.surge);
     this.material.uniforms.uPower.value=(Math.abs(ship.port)+Math.abs(ship.starboard))/2;
-    this.mesh.position.set(center.x,0,center.z);
+    this.mesh.position.set(center.x-origin.x,0,center.z-origin.z);
   }
   dispose():void {this.mesh.geometry.dispose();this.material.dispose();this.coast.texture.dispose();this.foamTexture.dispose();}
 }
