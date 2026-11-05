@@ -151,3 +151,14 @@ Validation finale phase 6 : `npm run build` réussi ; **185 tests réussis, 0 é
 Bilan détaillé distinguant terminé, partiel, non réalisé et limites : [BRITTANY_FERRIES_FINAL_AUDIT.md](BRITTANY_FERRIES_FINAL_AUDIT.md). Architecture et utilisation : [FERRY_PILOTING.md](FERRY_PILOTING.md).
 
 La fidélité du modèle et des ports reste partielle ; véhicules et passagers sont des flux agrégés représentatifs, sans circulation individuelle complète. Plans détaillés et références supplémentaires manquants. Safari/iPad physique et traversées manuelles intégrales de plusieurs heures non testés. Les essais géométriques et états de destination injectés ne doivent pas être présentés comme de tels essais. Version prête à être évaluée avec ces réserves, sans certification professionnelle ni donnée utilisable pour la navigation réelle. Aucune fusion dans develop, aucune publication et aucun déploiement.
+
+## Intégration comme mode de jeu (après phase 7)
+
+- [x] Choix initial Compagnie Corsaire / Brittany Ferries, menus propres et changement de compagnie accessible depuis un service en pause.
+- [x] Brittany Ferries dans le viewport complet, avec HUD Corsaire partagé ; suppression de la fenêtre de traversée.
+- [x] Même composant de moteurs/barre, boutons, clavier, typographie, icônes et emplacements ; données et identifiants isolés par poste.
+- [x] Sessions et sauvegardes conservées, mission Corsaire suspendue pendant Brittany Ferries, restauration de l'interface et de l'exploration.
+- [x] Énergie hybride, propulseurs, carte/radar, ailerons, équipage, incidents et réglages toujours accessibles.
+- [x] 196 tests réussis, build réussi et contrôles Chromium des deux modes, des changements de compagnie, des gestes et des reprises. Captures PC/tablette/téléphone/paysage examinées ; iPad physique non testé.
+
+Architecture, commandes et résultats : [COMPANY_MODES.md](COMPANY_MODES.md). Les captures et descriptions d'interface de phase 7 ci-dessus sont historiques ; le mode plein écran les remplace. Aucune fusion dans develop ni aucun déploiement.
