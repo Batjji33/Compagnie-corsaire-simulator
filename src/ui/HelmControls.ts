@@ -16,7 +16,11 @@ const engineControl = (key: 'port' | 'starboard', name: string) => `
     <small id="${key}-actual">Poussée 0 %</small>
   </div>`;
 
+export interface HelmPresentation {root?:HTMLElement;idPrefix?:string;name?:()=>string;speed?:()=>number;clearance?:()=>number;nearby?:()=>string;}
 export class HelmControls {
+  private app:HTMLElement;
+  private find<T extends Element=HTMLElement>(selector:string):T|null{return this.panel.querySelector<T>(selector.replace(/#([\w-]+)/g,'[data-helm-id="$1"]'));}
+  private findAll<T extends Element=HTMLElement>(selector:string):NodeListOf<T>{return this.panel.querySelectorAll<T>(selector.replace(/#([\w-]+)/g,'[data-helm-id="$1"]'));}
   private enabled = true;
   private abort = new AbortController();
   private keys = new Set<string>();
@@ -25,7 +29,7 @@ export class HelmControls {
   private panel: HTMLElement;
   private help: HTMLDetailsElement;
   private renderElapsed = 0;
-  constructor(private dynamics: VesselDynamics, private camera: (mode: CameraMode)=>void, private mode: ()=>CameraMode) {
+  constructor(private dynamics: VesselDynamics, private camera: (mode: CameraMode)=>void, private mode: ()=>CameraMode,private presentation:HelmPresentation={}) {
     this.panel = document.createElement('section');
     this.panel.className = 'helm';
     this.panel.setAttribute('aria-label','Poste de conduite du Corsaire d’Émeraude');
@@ -52,14 +56,16 @@ export class HelmControls {
         <p id="rudder-demand">Consigne 0°</p>
         <div class="helm-actions"></div>
       </div>`;
-    const app = document.querySelector('#app')!;
+    const app = this.app=presentation.root??document.querySelector<HTMLElement>('#app')!;
+    this.panel.querySelectorAll<HTMLElement>('[id]').forEach(el=>{const id=el.id;el.dataset.helmId=id;if(presentation.idPrefix)el.id=presentation.idPrefix+id;});
+    if(presentation.idPrefix)this.find('[clip-path]')!.setAttribute('clip-path','url(#'+presentation.idPrefix+'compass-clip)');
     app.classList.add('piloting');
     app.insertBefore(this.panel,app.querySelector('footer'));
     this.help = document.createElement('details');
     this.help.className = 'helm-help';
     this.help.innerHTML = `<summary aria-label="Aide au pilotage">${icon('help')}<span>Aide</span></summary><p>Maintenez les flèches pour orienter la barre ; au relâchement, elle garde sa consigne. Un appui bref ajuste l’angle de 1°. Les moteurs ont sept crans : AR3, AR2, AR1, N, AV1, AV2, AV3. Inversez la poussée pour ralentir.<br><br>Clavier : ↑ / ↓ deux moteurs · Q / A bâbord · E / D tribord · ← / → barre · X au milieu · Espace au neutre · C caméra. Glisser sur la mer : regarder ; deux doigts : zoomer.</p>`;
     app.querySelector('footer')!.insertBefore(this.help,app.querySelector('#pause'));
-    const get = <T extends HTMLElement>(id: string)=>this.panel.querySelector<T>(`#${id}`)!;
+    const get = <T extends HTMLElement>(id: string)=>this.find<T>(`#${id}`)!;
     const options = {signal:this.abort.signal};
     for (const key of ['port','starboard'] as const) {
       for (const [suffix,direction] of [['up',1],['down',-1]] as const) {
@@ -123,31 +129,32 @@ export class HelmControls {
   }
   refresh(): void {
     const c=this.dynamics.command,s=this.dynamics.state;
-    const name=Object.values(SHIPS).find(ship=>ship.parameters===this.dynamics.parameters)?.name??SHIPS.emeraude.name;
-    this.panel.querySelector('.vessel-name')!.textContent=name;this.panel.setAttribute('aria-label','Poste de conduite du '+name);
-    const set=(id:string,value:string)=>{const el=this.panel.querySelector(`#${id}`)!;if(el.textContent!==value)el.textContent=value;};
+    const name=this.presentation.name?.()??Object.values(SHIPS).find(ship=>ship.parameters===this.dynamics.parameters)?.name??SHIPS.emeraude.name;
+    this.find('.vessel-name')!.textContent=name;this.panel.setAttribute('aria-label','Poste de conduite du '+name);
+    const set=(id:string,value:string)=>{const el=this.find(`#${id}`)!;if(el.textContent!==value)el.textContent=value;};
     for(const key of ['port','starboard'] as const){
       const notch=engineNotch(c[key])-3,label=notch===0?'N':`${notch>0?'AV':'AR'}${Math.abs(notch)}`;
       set(`${key}-command`,label);
-      this.panel.querySelector(`#${key}-neutral`)!.setAttribute('aria-label',`${key==='port'?'Bâbord':'Tribord'} : ${label}, ${Math.round(c[key]*100)} %. Remettre au neutre`);
-      this.panel.querySelector(`[data-engine="${key}"]`)!.setAttribute('data-direction',notch<0?'astern':notch>0?'ahead':'neutral');
-      this.panel.querySelectorAll<HTMLElement>(`[data-engine="${key}"] [data-notch]`).forEach(tick=>tick.classList.toggle('selected',Number(tick.dataset.notch)===notch));
+      this.find(`#${key}-neutral`)!.setAttribute('aria-label',`${key==='port'?'Bâbord':'Tribord'} : ${label}, ${Math.round(c[key]*100)} %. Remettre au neutre`);
+      this.find(`[data-engine="${key}"]`)!.setAttribute('data-direction',notch<0?'astern':notch>0?'ahead':'neutral');
+      this.findAll<HTMLElement>(`[data-engine="${key}"] [data-notch]`).forEach(tick=>tick.classList.toggle('selected',Number(tick.dataset.notch)===notch));
       set(`${key}-actual`,`${Math.round(s[key]*100*this.dynamics.powerFactor*(s[key]<0?this.dynamics.parameters.reverseEfficiency:1))} % poussée`);
     }
     const angle=Math.round(s.rudder*180/Math.PI),demand=Math.round(c.rudder*this.dynamics.parameters.rudderMaxDegrees),reading=instruments(s);
     set('rudder-angle',`${Math.abs(angle)}°${angle<0?' B':angle>0?' T':''}`);
     set('rudder-demand',`Consigne ${Math.abs(demand)}°${demand<0?' bâbord':demand>0?' tribord':''}`);
-    this.panel.querySelector('#rudder-needle')!.setAttribute('transform',`rotate(${angle*1.6} 100 54)`);
-    set('ship-speed-value',reading.speed.toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1}));
+    this.find('#rudder-needle')!.setAttribute('transform',`rotate(${angle*1.6} 100 54)`);
+    set('ship-speed-value',(this.presentation.speed?.()??reading.speed).toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1}));
     set('ship-heading',`${String(reading.heading%360).padStart(3,'0')}°`);
-    this.panel.querySelector('#compass-marks')!.setAttribute('transform',`translate(${150-(reading.heading+180)*2} 0)`);
+    this.find('#compass-marks')!.setAttribute('transform',`translate(${150-(reading.heading+180)*2} 0)`);
     const nearest=[...DOCKS.map(d=>({name:d.name,x:d.point[0],z:d.point[1]})),...COAST_DESTINATIONS.filter(d=>d.kind==='view')].map(d=>({name:d.name,distance:Math.hypot(s.x-d.x,s.z-d.z)})).sort((a,b)=>a.distance-b.distance)[0];
-    set('berth-distance',`${nearest.name} · ${Math.round(nearest.distance)} m`);
-    for(const mode of ['external','cockpit'] as const)this.panel.querySelector(`#camera-${mode}`)!.setAttribute('aria-pressed',String(this.mode()===mode));
+    set('berth-distance',this.presentation.nearby?.()??`${nearest.name} · ${Math.round(nearest.distance)} m`);
+    for(const mode of ['external','cockpit'] as const)this.find(`#camera-${mode}`)!.setAttribute('aria-pressed',String(this.mode()===mode));
     const exploring=this.mode()==='explore';
-    document.querySelector('#app')!.classList.toggle('exploring',exploring);
-    this.panel.querySelectorAll<HTMLButtonElement>('.helm-engines button,.rudder-control button:not(#fog-horn)').forEach(el=>{el.disabled=!this.enabled||exploring;});
-    const dot=document.getElementById('map-vessel');dot?.setAttribute('transform',`translate(${s.x} ${s.z}) rotate(${s.heading*180/Math.PI})`);
+    this.app.classList.toggle('exploring',exploring);
+    this.findAll<HTMLButtonElement>('.helm-engines button,.rudder-control button:not(#fog-horn)').forEach(el=>{el.disabled=!this.enabled||exploring;});
+    if(this.presentation.clearance)set('ship-clearance-value',this.presentation.clearance().toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1}));
+    const dot=this.app.querySelector('#map-vessel');dot?.setAttribute('transform',`translate(${s.x} ${s.z}) rotate(${s.heading*180/Math.PI})`);
   }
   clearKeys(): void {this.keys.clear();for(const id of this.repeats.keys())this.stopPointer(id);this.steering.clear();this.panel.querySelectorAll('.held').forEach(el=>el.classList.remove('held'));}
   setEnabled(enabled: boolean): void {if(this.enabled===enabled)return;this.enabled=enabled;this.clearKeys();this.refresh();}

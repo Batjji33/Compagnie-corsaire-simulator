@@ -106,22 +106,22 @@ h1 span { font-weight: 400; color: var(--muted); }
 .engine-neutral { flex-direction: column; gap: 0; min-height: 50px; padding: 2px 3px; background: transparent; font-size: 12px; border-color: var(--edge); }
 .engine-neutral > small { font-size: 11px; line-height: 12px; }
 .engine-control small { color: var(--muted); font-size: 11px; line-height: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-#all-neutral { grid-column: 1/-1; padding: 0 6px; min-height: 44px; background: #333b38; font-size: 12px; }
+:is(#all-neutral,[data-helm-id="all-neutral"]) { grid-column: 1/-1; padding: 0 6px; min-height: 44px; background: #333b38; font-size: 12px; }
 kbd { font: inherit; color: var(--muted); margin-left: auto; }
 .rudder-control { position: absolute; right: var(--right); bottom: calc(var(--bottom) + 66px); padding: 12px; width: 222px; }
 .control-heading output { font-weight: 500; font-size: 17px; font-variant-numeric: tabular-nums; }
 .rudder-gauge { display: block; width: 100%; height: 58px; margin-bottom: 8px; fill: var(--accent); }
 .gauge-track { fill: none; stroke: #73867d; stroke-width: 2; }
 .gauge-ticks { fill: none; stroke: #73867d; }
-#rudder-needle { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; }
+:is(#rudder-needle,[data-helm-id="rudder-needle"]) { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; }
 .rudder-gauge text { fill: var(--muted); font-size: 11px; }
 .steering-buttons { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
 .steering-buttons button { padding: 0; min-height: 60px; border-radius: 12px; background: #343c39; border-color: #56635e; touch-action: none; }
 .steering-buttons .icon { width: 28px; height: 28px; }
-#rudder-center { flex-direction: column; gap: 2px; background: transparent; }
-#rudder-center span { font-size: 19px; }
-#rudder-center small { font-size: 11px; color: var(--muted); }
-#rudder-demand { font-size: 11px; color: var(--muted); text-align: center; margin: 8px 0 10px; font-variant-numeric: tabular-nums; }
+:is(#rudder-center,[data-helm-id="rudder-center"]) { flex-direction: column; gap: 2px; background: transparent; }
+:is(#rudder-center,[data-helm-id="rudder-center"]) span { font-size: 19px; }
+:is(#rudder-center,[data-helm-id="rudder-center"]) small { font-size: 11px; color: var(--muted); }
+:is(#rudder-demand,[data-helm-id="rudder-demand"]) { font-size: 11px; color: var(--muted); text-align: center; margin: 8px 0 10px; font-variant-numeric: tabular-nums; }
 #fog-horn { width: 100%; min-height: 46px; font-size: 12px; touch-action: none; background: transparent; }
 #fog-horn[aria-pressed=true] { background: #3c5b4b; border-color: var(--accent); }
 
@@ -343,7 +343,7 @@ footer { z-index: 4; inset: auto var(--right) var(--bottom) var(--left); display
   .engine-neutral { min-height: 44px; } .engine-command { line-height: 22px; }
   .rudder-control { width: 196px; }
   .rudder-gauge { height: 32px; } .steering-buttons button { min-height: 48px; }
-  #rudder-demand { margin: 5px 0; } #fog-horn { min-height: 44px; }
+  :is(#rudder-demand,[data-helm-id="rudder-demand"]) { margin: 5px 0; } #fog-horn { min-height: 44px; }
   .control-heading { margin-bottom: 2px; }
   #mission-hud { padding: 8px; }
   #objective-guidance { margin: 4px 0; } #objective-details { max-height: 100px; }
@@ -368,7 +368,7 @@ footer { z-index: 4; inset: auto var(--right) var(--bottom) var(--left); display
   .engine-command { font-size: 21px; line-height: 24px; } .engine-step { min-height: 44px; }
   .rudder-control { width: 178px; padding: 8px; bottom: calc(var(--bottom) + 114px); }
   .rudder-gauge { height: 44px; } .steering-buttons { gap: 4px; } .steering-buttons button { min-height: 48px; }
-  .steering-buttons .icon { width: 22px; height: 22px; } #rudder-center small { font-size: 11px; }
+  .steering-buttons .icon { width: 22px; height: 22px; } :is(#rudder-center,[data-helm-id="rudder-center"]) small { font-size: 11px; }
   #fog-horn { padding: 0 4px; font-size: 11px; }
   .helm-engines .control-heading { font-size: 12px; }
   footer { flex-wrap: wrap; gap: 8px; justify-content: center; }
@@ -406,17 +406,6 @@ footer { z-index: 4; inset: auto var(--right) var(--bottom) var(--left); display
 @media(max-width:600px) { .ferry-inspector { padding:10px; } .ferry-inspector h2 {font-size:18px;} .ferry-inspector canvas {height:44vh;} }
 .ferry-inspector button { color:#f5f7f7; background:#293e48; border:1px solid #52636b; }
 .ferry-inspector button:hover { background:#405965; }
-.channel-voyage {width:min(1440px,96vw);}
-.channel-views {display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:12px;}
-.channel-views [data-scene] {height:55vh;min-height:300px;}
-.channel-views [data-chart] {width:100%;height:auto;aspect-ratio:1.2;}
-.channel-views aside {min-width:0;}
-.channel-views output {display:block;white-space:pre-line;font-size:14px;line-height:1.5;margin-top:12px;}
-.channel-voyage select {color:#172c36;background:#fff;min-height:40px;}
-.channel-voyage [data-manual]:not([hidden]) {display:flex;flex-wrap:wrap;gap:20px;}
-.channel-voyage input[type=range] {width:180px;}
-@media(max-width:850px){.channel-views {grid-template-columns:minmax(0,1fr) 200px;}.channel-views [data-scene]{height:45vh;}}
-@media(max-width:600px){.channel-views {grid-template-columns:1fr;}.channel-views [data-scene]{height:38vh;min-height:240px;}.channel-views aside{display:grid;grid-template-columns:1fr 1fr;gap:8px;}.channel-views [data-chart]{grid-row:span 3;}.channel-views output{margin:0;font-size:12px;}}
 .ferry-helm,.ferry-energy-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:12px;}
 .ferry-helm label{display:flex;flex:1 1 190px;flex-direction:column;gap:8px;}
 .ferry-helm input[type=range]{width:100%;min-height:44px;touch-action:pan-y;}
@@ -424,7 +413,6 @@ footer { z-index: 4; inset: auto var(--right) var(--bottom) var(--left); display
 .ferry-energy summary{cursor:pointer;min-height:44px;}
 .ferry-energy output{display:block;white-space:pre-line;line-height:1.6;font-variant-numeric:tabular-nums;padding:8px 12px;background:#e4ebed;}
 .ferry-energy p{font-size:13px;}
-.channel-voyage{max-height:94dvh;overflow:auto;}
 .incident-panel{border-top:1px solid #b6c5ca;border-bottom:1px solid #b6c5ca;margin:12px 0;padding:8px 0;}
 .incident-panel>summary{min-height:44px;cursor:pointer;font-weight:600;}
 .incident-settings{display:flex;flex-wrap:wrap;gap:10px;align-items:end;}
@@ -439,36 +427,4 @@ footer { z-index: 4; inset: auto var(--right) var(--bottom) var(--left); display
 .crew-status{padding-left:20px;font-size:14px;line-height:1.7;}
 .incident-consequences{font-variant-numeric:tabular-nums;line-height:1.6;}
 @media(max-width:600px){.incident-card button{width:100%;}.incident-panel select{width:100%;}}
-/* The helm stays visible while instruments scroll independently. */
-.channel-voyage{height:94dvh;max-height:94dvh;display:flex;flex-direction:column;overflow:hidden;gap:8px;}
-.channel-voyage header{flex:none;}
-.channel-voyage header p{margin-bottom:0;}
-.channel-views{flex:1;min-height:200px;position:relative;grid-template-columns:minmax(0,1fr) 300px;}
-.channel-views [data-scene]{height:100%;min-height:0;}
-.channel-views aside{overflow-y:auto;overscroll-behavior:contain;padding:0 8px;display:block;}
-.channel-views [data-chart]{height:auto;max-height:180px;object-fit:contain;}
-.channel-service h3{font-size:16px;margin:0 0 6px;}
-.channel-service p{white-space:pre-line;font-size:13px;line-height:1.45;}
-.channel-service button{width:100%;}
-.channel-controls{position:static;inset:auto;display:block;pointer-events:auto;flex:none;border-top:1px solid #b6c5ca;}
-.channel-controls nav{margin:6px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.channel-controls nav label{padding:0;min-height:44px;}
-.channel-controls .ferry-helm{margin:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
-.channel-controls .ferry-helm label{padding:0;font-size:13px;min-height:0;}
-.channel-controls .ferry-helm input[type=range]{margin:0;}
-.channel-options>label{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:8px 0;}
-.channel-options summary,.incident-panel summary{min-height:44px;cursor:pointer;}
-.channel-options output{font-size:12px;}
-.channel-footnote{display:none;}
-.channel-voyage [data-instruments]{display:none;}
-@media(max-width:850px){.channel-views{grid-template-columns:minmax(0,1fr) 240px;}.channel-voyage h2{font-size:18px;}}
-@media(max-width:600px){
- .channel-voyage{width:98vw;padding:8px;gap:6px;}.channel-views{grid-template-columns:1fr;min-height:160px;}
- .channel-views aside{display:none;position:absolute;inset:0 0 0 auto;width:min(310px,92%);background:#f5f7f7;border:1px solid #a9b9c0;z-index:5;padding:10px;}
- .channel-voyage.instruments-open .channel-views aside{display:block;}
- .channel-voyage [data-instruments]{display:block;}
- .channel-controls .ferry-helm{grid-template-columns:1fr 1fr;gap:2px 12px;}
- .channel-controls nav button{padding:6px 8px;}.channel-controls nav label{font-size:12px;}.channel-controls nav{gap:4px;}
- .channel-controls .ferry-helm label{font-size:12px;gap:0;}
- .channel-voyage header p{font-size:12px;}
-}
+.game-menu-tools { display:flex; gap:6px; flex:none; } .game-menu-tools button { font-size:12px; min-height:44px; padding:0 12px; }

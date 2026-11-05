@@ -1,3 +1,4 @@
+import type { ChannelSession } from './ChannelVoyage';
 import { SHIPS, isShipId } from '../ships/parameters';
 import { vesselMission } from '../missions/vesselMission';
 import { COAST_DESTINATIONS } from '../world/EmeraldCoast';
@@ -28,6 +29,15 @@ const clock=(seconds:number)=>`${Math.floor(seconds/60)}:${String(Math.floor(sec
 const hourLabel=formatHour;
 const escape=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 export class Game {
+  private company:'selection'|'corsaire'|'brittany'='selection';
+  private channel:ChannelSession|undefined;
+  private channelLoading=false;
+  private async startChannel(north:boolean):Promise<void>{
+    if(this.channelLoading)return;this.channelLoading=true;
+    try{const {openChannelVoyage}=await import('./ChannelVoyage');this.channel?.dispose();this.channel=undefined;this.setPaused(true);this.dialog.close();this.company='brittany';this.channel=openChannelVoyage(north,this.store.data.immersion.audio,{menu:()=>this.show('home'),restart:()=>{void this.startChannel(north);}});}
+    catch{this.show('home');const error=document.createElement('p');error.setAttribute('role','alert');error.textContent='Impossible de charger Brittany Ferries. Réessayez.';this.dialog.querySelector('#menu-content')!.append(error);}
+    finally{this.channelLoading=false;}
+  }
   mission:Mission|undefined;
   private service:FerryService|undefined;
   private mode:'free'|'mission'='free';
@@ -52,7 +62,7 @@ export class Game {
     const options={signal:this.abort.signal};
     this.settingsPanel=document.querySelector('#settings')!;
     this.dialog.id='game-menu';this.dialog.setAttribute('aria-labelledby','game-menu-title');
-    this.dialog.innerHTML='<div class="game-dialog-header"><span>Compagnie Corsaire Simulator</span><button data-action="home" aria-label="Menu principal">Menu</button></div><div id="menu-content"></div>';
+    this.dialog.innerHTML='<div class="game-dialog-header"><span>Compagnie Corsaire Simulator</span><div class="game-menu-tools"><button data-action="company-switch">Compagnies</button><button data-action="home" aria-label="Menu principal">Menu</button></div></div><div id="menu-content"></div>';
     document.querySelector('#app')!.append(this.dialog);
     this.menuButton.id='game-menu-toggle';this.menuButton.innerHTML=`${icon('menu')}<span>Menu</span>`;this.menuButton.setAttribute('aria-haspopup','dialog');
     this.menuButton.setAttribute('aria-label','Ouvrir le menu principal');
@@ -82,15 +92,18 @@ export class Game {
     this.dialog.addEventListener('click',e=>{
       const button=(e.target as HTMLElement).closest<HTMLButtonElement>('[data-action]');if(!button)return;
       const action=button.dataset.action!;
-      if(action==='channel-voyage'||action==='channel-portsmouth'){void import('./ChannelVoyage').then(m=>m.openChannelVoyage(action==='channel-portsmouth',this.store.data.immersion.audio)).catch(()=>{this.dialog.querySelector('.game-storage')!.textContent='Chargement de la Manche impossible.';});return;}
-      if(action==='inspect-brittany'){void import('./FerryInspector').then(m=>m.inspectBrittanyFerry()).catch(()=>{this.dialog.querySelector('.game-storage')!.textContent='Impossible de charger le modèle. Réessayez.';});return;}
+      if(action==='company-corsaire'||action==='company-brittany'||action==='company-switch'){this.channel?.dispose();this.channel=undefined;this.company=action==='company-corsaire'?'corsaire':action==='company-brittany'?'brittany':'selection';this.show('home');return;}
+      if(action==='channel-voyage'||action==='channel-portsmouth'){void this.startChannel(action==='channel-portsmouth');return;}
+      if(action==='resume-channel'){this.dialog.close();this.channel?.resume();return;}
+      if(action==='channel'){this.company='brittany';this.show('home');return;}
+      if(action==='inspect-brittany'){void import('./FerryInspector').then(m=>m.inspectBrittanyFerry()).catch(()=>{const note=document.createElement('p');note.setAttribute('role','alert');note.textContent='Impossible de charger le modèle. Réessayez.';this.dialog.querySelector('#menu-content')!.append(note);});return;}
       if(action==='resume')this.resume();else if(action==='resume-saved'){this.started=false;this.resume();}else if(action==='start-free')this.startFree();else if(action==='start-mission')this.prepare(MISSIONS.find(d=>d.id===button.dataset.mission)??MALO_DINARD);
       else if(action==='board'){this.mission?.board();this.launch();if(this.service)this.immersion.announce(`Embarquement pour ${this.service.destinationName}.`);}
       else if(action==='confirm-end-service')this.finishService();
       else if(action==='restart'){this.prepare(this.mission?.definition??MALO_DINARD);}
       else if(action==='checkpoint')this.recover();else this.show(action);
     },options);
-    this.dialog.addEventListener('cancel',e=>{e.preventDefault();if(this.started&&!this.mission?.finished)this.resume();},options);
+    this.dialog.addEventListener('cancel',e=>{e.preventDefault();if(this.channel){this.dialog.close();this.channel.resume();}else if(this.company==='corsaire'&&this.started&&!this.mission?.finished)this.resume();},options);
     this.dialog.addEventListener('keydown',e=>{e.stopPropagation();},options);
     this.dialog.addEventListener('change',e=>{
       const select=e.target as HTMLSelectElement;
@@ -136,9 +149,11 @@ export class Game {
     if(this.settingsPanel.parentElement!==document.querySelector('.viewport')){document.querySelector('.viewport')!.append(this.settingsPanel);this.settingsPanel.hidden=true;}
   }
   private show(screen:string):void {
-    this.setPaused(true);this.snapshot();this.returnSettings();
+    this.channel?.pause();
+    this.setPaused(true);this.snapshot();if(!this.channel)this.returnSettings();
     this.immersion.panel.remove();
     this.dialog.querySelector('#menu-content')!.innerHTML=this.markup(screen);
+    this.dialog.querySelector<HTMLButtonElement>('.game-dialog-header [data-action=company-switch]')!.hidden=this.company==='selection';
     if(screen==='progress')this.dialog.querySelector('#menu-content')!.insertAdjacentHTML('beforeend',this.serviceHistory());
     if(screen==='settings'){
       this.settingsPanel.hidden=false;this.dialog.querySelector('#menu-content')!.append(this.settingsPanel);
@@ -150,6 +165,8 @@ export class Game {
   }
   private markup(screen:string):string {
     const title=(text:string)=>`<h2 id="game-menu-title" tabindex="-1">${text}</h2>`;
+    if(screen==='home'&&this.company==='selection')return title('Choisissez votre compagnie')+'<p>Deux compagnies, deux navigations. Retrouvez vos commandes et vos traversées dans chaque mode.</p><nav class="game-main-nav company-choices"><button data-action="company-corsaire">Compagnie Corsaire<span>La baie de Saint-Malo, Dinard et la côte d’Émeraude</span></button><button data-action="company-brittany">Brittany Ferries<span>Le Saint-Malo, la Manche et Portsmouth</span></button></nav>';
+    if(screen==='home'&&this.company==='brittany')return title('Brittany Ferries')+'<p>Saint-Malo ↔ Portsmouth · Le Saint-Malo</p><nav class="game-main-nav">'+(this.channel?'<button class="game-primary" data-action="resume-channel">Reprendre la traversée<span>Retour au pilotage du Saint-Malo</span></button>':'')+'<button data-action="channel-voyage">Départ de Saint-Malo<span>Reprendre la sauvegarde du Naye ou commencer un service</span></button><button data-action="channel-portsmouth">Départ de Portsmouth<span>Reprendre la sauvegarde britannique ou commencer un retour</span></button><button data-action="inspect-brittany">Inspecter le Saint-Malo<span>Modèle 3D, ponts et rampes</span></button><button data-action="company-switch">Changer de compagnie<span>Retrouver le mode Compagnie Corsaire</span></button></nav><p>Cartes et profondeurs fictives, inutilisables pour la navigation réelle.</p>';
     const d=this.mission?.definition??MALO_DINARD;
     const serviceScreen=this.serviceMarkup(screen);if(serviceScreen)return serviceScreen;
     if(screen==='excursions')return title('Excursion et ambiance')+'<p>Choisissez les commentaires, préparez votre excursion et réglez les volumes. La navigation est en pause pendant la préparation.</p>';
@@ -163,7 +180,7 @@ export class Game {
       const s=this.store.data.stats;return title('Progression locale')+`<dl class="score-breakdown">${[['Traversées réussies',s.completed],['Tentatives interrompues',s.failed],['Passagers transportés',s.passengers],['Meilleure note',`${s.best} / 100`],['Temps en mission',clock(s.seconds)],['Temps en navigation libre',clock(s.freeSeconds)],['Distance en mode libre',`${(s.freeDistance/1852).toFixed(2)} milles`]].map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl><h3>Dernières traversées</h3>${this.store.data.history.length?`<ul class="game-history">${this.store.data.history.slice(0,8).map(r=>`<li><span>${escape(typeof r.routeTitle==='string'?r.routeTitle:MISSIONS.find(m=>m.id===r.missionId)?.title??r.missionId)}<br><small>${escape(r.grade)} · ${clock(r.elapsed)}</small></span><strong>${r.score} / 100</strong></li>`).join('')}</ul>`:'<p>Aucune traversée terminée. Votre première mission vous attend.</p>'}<p>Sauvegarde IndexedDB sur ce navigateur, sans compte.</p>`;
     }
     const canResume=(this.started&&!this.mission?.finished)||this.store.data.active;
-    return title(this.started?'Traversée en pause':'À vous la barre')+`<p>La baie de Saint-Malo et Dinard à bord du ${SHIPS[this.world.vessel.shipId].name}.</p><nav class="game-main-nav" aria-label="Modes de jeu">${canResume?'<button class="game-primary" data-action="resume">Reprendre la partie</button>':''}${this.started&&this.mode==='free'&&this.store.data.active?'<button data-action="resume-saved">Reprendre la mission sauvegardée</button>':''}<button data-action="free">Navigation libre <span>Choisir la météo et explorer la baie</span></button><button data-action="missions">Missions et excursions <span>Saint-Malo ↔ Dinard · Cézembre · Fort La Latte · Cap Fréhel</span></button><button data-action="channel">Saint-Malo - Portsmouth <span>Pilotage du ferry et passerelle</span></button><button data-action="inspect-brittany">Brittany Ferries · Saint-Malo <span>Catalogue · Inspection 3D</span></button><button data-action="settings">Paramètres</button><button data-action="progress">Progression et statistiques locales</button><button data-action="excursions">Excursion et son</button></nav>${this.started&&this.mode==='mission'&&!this.mission?.finished?'<div class="game-buttons"><button data-action="restart">Redémarrer la mission</button><button data-action="checkpoint">Reprendre au point sûr</button></div>':''}<p class="game-storage" role="status"></p><small>Données maritimes fictives · ne pas utiliser pour la navigation réelle.</small>`;
+    return title(this.started?'Traversée en pause':'À vous la barre')+`<p>La baie de Saint-Malo et Dinard à bord du ${SHIPS[this.world.vessel.shipId].name}.</p><nav class="game-main-nav" aria-label="Modes de jeu">${canResume?'<button class="game-primary" data-action="resume">Reprendre la partie</button>':''}${this.started&&this.mode==='free'&&this.store.data.active?'<button data-action="resume-saved">Reprendre la mission sauvegardée</button>':''}<button data-action="free">Navigation libre <span>Choisir la météo et explorer la baie</span></button><button data-action="missions">Missions et excursions <span>Saint-Malo ↔ Dinard · Cézembre · Fort La Latte · Cap Fréhel</span></button><button data-action="company-switch">Changer de compagnie <span>Compagnie Corsaire ou Brittany Ferries</span></button><button data-action="settings">Paramètres</button><button data-action="progress">Progression et statistiques locales</button><button data-action="excursions">Excursion et son</button></nav>${this.started&&this.mode==='mission'&&!this.mission?.finished?'<div class="game-buttons"><button data-action="restart">Redémarrer la mission</button><button data-action="checkpoint">Reprendre au point sûr</button></div>':''}<p class="game-storage" role="status"></p><small>Données maritimes fictives · ne pas utiliser pour la navigation réelle.</small>`;
   }
   private shipChoices(screen:string):string {
     const id=this.store.data.selectedShip,ship=SHIPS[id],p=ship.parameters;
@@ -511,5 +528,5 @@ export class Game {
     const status=this.dialog.querySelector('.game-storage');if(status)status.textContent=this.store.available?'Sauvegarde locale automatique · aucun compte requis':'Stockage indisponible : progression conservée pour cette session uniquement.';
     if(!this.store.available)this.ui.storageWarning();
   }
-  dispose():void {this.snapshot();this.abort.abort();this.returnSettings();this.immersion.dispose();this.dialog.remove();this.hud.remove();this.menuButton.remove();this.markers.dispose();this.store.close();}
+  dispose():void {this.channel?.dispose();this.snapshot();this.abort.abort();this.returnSettings();this.immersion.dispose();this.dialog.remove();this.hud.remove();this.menuButton.remove();this.markers.dispose();this.store.close();}
 }
