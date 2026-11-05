@@ -90,7 +90,7 @@ export class ChannelTraffic {
   }
   for(const [i,b] of CHANNEL_BERTHS.entries()){
    const port=i===0?'malo':'dinard',record=this.berths.ports[port],near=Math.hypot(player.x-b.point[0],player.z-b.point[1])<220;
-   record.playerPresent=near;if(near){this.berths.request(port,'player');this.berths.occupy(port,'player');}else this.berths.release(port,'player');
+   record.playerPresent=near;if(near){if(!record.owner&&!record.reserved){record.owner='player';record.queue=record.queue.filter(id=>id!=='player');}this.berths.request(port,'player');this.berths.occupy(port,'player');}else this.berths.release(port,'player');
   }
  }
  contact(s:VesselState):string|undefined{

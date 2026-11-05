@@ -1,4 +1,4 @@
-import { Color, Mesh, PlaneGeometry, ShaderMaterial, Float32BufferAttribute, Vector4, DoubleSide } from 'three';
+import { Color, Mesh, PlaneGeometry, ShaderMaterial, Float32BufferAttribute, Vector2, Vector4, DoubleSide } from 'three';
 import { CONFIG } from '../config';
 import type { Quality } from '../config';
 import { sunDirection } from '../weather/daylight';
@@ -19,7 +19,7 @@ export class Ocean {
     this.material=new ShaderMaterial({side:DoubleSide,
       uniforms:{uLight:{value:1},uTime:{value:0},uHeight:{value:.6},uTide:{value:0},uWaves:{value:water.components},uWavePhase:{value:this.phases},
         uSun:{value:sunDirection},uFog:{value:new Color(0xb5cbd1)},uFogNear:{value:CONFIG.weather.fogNear},uFogFar:{value:CONFIG.weather.fogFar},
-        uCoast:{value:this.coast.texture},uFoamNoise:{value:this.foamTexture},uBounds:{value:this.coast.bounds.clone()},uShip:{value:new Vector4()},uPower:{value:0}},
+        uCoast:{value:this.coast.texture},uFoamNoise:{value:this.foamTexture},uBounds:{value:this.coast.bounds.clone()},uShip:{value:new Vector4()},uPower:{value:0},uHull:{value:new Vector2(24.8,5)}},
       vertexShader:`
         ${WAVE_GLSL}
         uniform float uTide;
@@ -38,6 +38,7 @@ export class Ocean {
         uniform vec3 uSun,uFog;
         uniform sampler2D uCoast,uFoamNoise;
         uniform vec4 uBounds,uShip;
+        uniform vec2 uHull;
         uniform vec4 uWaves[${WAVE_COUNT}];
         uniform vec2 uWavePhase[${WAVE_COUNT}];
         varying vec3 vWorld,vNormal;
@@ -72,12 +73,13 @@ export class Ocean {
           float shoreFoam=shore*(.3+.7*pow(.5+.5*sin(p.x*.24+p.y*.33-uTime*1.6),3.));
           vec2 forward=vec2(sin(uShip.z),-cos(uShip.z)),right=vec2(-forward.y,forward.x),delta=p-uShip.xy;
           float signSpeed=uShip.w<-.15?-1.:1.,along=dot(delta,forward)*signSpeed,side=dot(delta,right);
-          float speed=abs(uShip.w),washLength=3.+speed*1.25+uPower*4.;
-          float aft=(-along-12.4)/washLength;
-          float wash=step(0.,aft)*(1.-smoothstep(.2,1.,aft))*exp(-side*side/(3.+aft*8.));
+          float scale=max(1.,uHull.y/5.);
+          float speed=abs(uShip.w),washLength=3.*scale+speed*1.25+uPower*4.*scale;
+          float aft=(-along-uHull.x*.5)/washLength;
+          float wash=step(0.,aft)*(1.-smoothstep(.2,1.,aft))*exp(-side*side/((3.+aft*8.)*scale*scale));
           float washPower=clamp(speed*.08+uPower*.55,0.,.9);
           float churn=smoothstep(.28,.72,foamNoise.x*.45+foamNoise.y*.55);
-          float bowDistance=(along-11.)/3.,bowSide=(abs(side)-2.5)/1.2;
+          float bowDistance=(along-uHull.x*.444)/max(3.,uHull.x*.04),bowSide=(abs(side)-uHull.y*.5)/(1.2*scale);
           float bow=exp(-bowDistance*bowDistance-bowSide*bowSide)*clamp((speed-.5)/8.,0.,.65);
           float foam=clamp(whitecaps+shoreFoam*.45+wash*washPower*churn+bow*.65,0.,.9);
           water=mix(water,vec3(.86,.92,.9),foam);water*=.18+.82*uLight;

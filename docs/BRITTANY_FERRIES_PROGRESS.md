@@ -1,16 +1,16 @@
 # Brittany Ferries — progression
 
 ## Périmètre
-Phases 2 à 6. Branche `feature/brittany-ferries`. Aucune modification de develop.
+Phases 2 à 7. Branche `feature/brittany-ferries`. Aucune modification de develop. Le bilan actuel, y compris les éléments partiels, est dans [l'audit final](BRITTANY_FERRIES_FINAL_AUDIT.md).
 
-## Architecture examinée
+## Architecture examinée initialement
 - Three.js / TypeScript / Vite, une unité = un mètre.
 - `ships/parameters.ts` et `Vessel.ts` sélectionnent les vedettes pilotables ; leurs paramètres alimentent physique, météo et contacts.
 - `ShipGeometry.loft`, géométries fusionnées et matériaux partagés sont réutilisables.
 - `Game.ts` porte le menu ; missions, sauvegardes et accostages restent dédiés aux navires existants.
 - Le catamaran `saint-malo` doit conserver son identité. Le ferry sera `brittany-saint-malo`.
 
-## Décisions
+## Décisions initiales (phase 2)
 Catalogue de compagnies léger, incluant les navires existants et un ferry en inspection seulement. Pas de coefficients physiques fictifs pour un navire de 195 m, pas de mission future. Inspection chargée à la demande depuis le menu existant, matériaux opaques, géométries fusionnées, textures locales et résolution plafonnée pour iPad.
 
 ## Références consultées le 1 novembre 2026
@@ -136,3 +136,18 @@ Contrôle navigateur : exercice cabine, délégation, progression ×8, fermeture
 Aucune phase suivante commencée, aucune fusion dans develop, aucun déploiement.
 
 Validation finale phase 6 : `npm run build` réussi ; **185 tests réussis, 0 échec**, dont les scénarios d'incidents et les régressions Corsaire. `git diff --check` sans erreur. Avertissement non bloquant du bundle principal > 650 kB conservé ; module Manche chargé à la demande ~73 kB minifiés / ~26,7 kB gzip. Aucune dépendance ajoutée. Chaque nouvelle traversée reçoit une graine locale différente ; sa sauvegarde conserve le générateur pour la reprise.
+
+## Phase 7 — Finition et validation (5 novembre 2026)
+
+- [x] Cahier des charges, architecture, historique et réalisations des phases 2–6 audités.
+- [x] Deux départs réels, service portuaire complet, progression manuelle, amarrage sans déplacement, retour conservant énergie et conséquences.
+- [x] Rampes progressives, ouvertures arrière, flux représentatifs de passagers/véhicules à l'échelle ; sauvegarde enrichie et événements adaptés au manifeste.
+- [x] Sillage/écume du grand ferry, façade vitrée, cycle jour/nuit, éclairage et audio reliés à la navigation.
+- [x] HUD tactile réorganisé, commandes visibles, trois postes, qualité graphique adaptative, libération des instances et correction d'une rétention des contextes Three r186.
+- [x] 196 tests réussis, 0 échec ; build TypeScript/Vite Safari 15 réussi, avertissement de bundle conservé ; aucun ajout de dépendance.
+- [x] Contrôles Chromium des départs/arrivées depuis états de test, reprise, modes, postes, gestes et clavier, audio, inspection, retour Corsaire et formats 1440/768/390 px ; aucune exception JavaScript dans les scénarios finaux.
+- [x] Mesures PC : ~30 FPS observés, 25–88 appels de dessin ; ouverture locale ~1,15 s ; réouvertures et tas JS contrôlés après correction. Aucun résultat iPad revendiqué.
+
+Bilan détaillé distinguant terminé, partiel, non réalisé et limites : [BRITTANY_FERRIES_FINAL_AUDIT.md](BRITTANY_FERRIES_FINAL_AUDIT.md). Architecture et utilisation : [FERRY_PILOTING.md](FERRY_PILOTING.md).
+
+La fidélité du modèle et des ports reste partielle ; véhicules et passagers sont des flux agrégés représentatifs, sans circulation individuelle complète. Plans détaillés et références supplémentaires manquants. Safari/iPad physique et traversées manuelles intégrales de plusieurs heures non testés. Les essais géométriques et états de destination injectés ne doivent pas être présentés comme de tels essais. Version prête à être évaluée avec ces réserves, sans certification professionnelle ni donnée utilisable pour la navigation réelle. Aucune fusion dans develop, aucune publication et aucun déploiement.

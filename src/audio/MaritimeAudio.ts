@@ -12,8 +12,8 @@ export function readAudio(value:unknown):AudioSettings {
   for(const key of ['master','engines','waves','wind','port','alerts','horn','voice'] as const)if(typeof v[key]==='number'&&Number.isFinite(v[key]))result[key]=clamp(v[key],0,1);
   return result;
 }
-export function audioLevels(s:VesselState,waves:number,wind:number):{engine:number;wave:number;wind:number;port:number} {
-  const distance=Math.min(...DOCKS.map(d=>Math.hypot(d.point[0]-s.x,d.point[1]-s.z)));
+export function audioLevels(s:VesselState,waves:number,wind:number,portDistance?:number):{engine:number;wave:number;wind:number;port:number} {
+  const distance=portDistance??Math.min(...DOCKS.map(d=>Math.hypot(d.point[0]-s.x,d.point[1]-s.z)));
   return {engine:.08+.6*(Math.abs(s.port)+Math.abs(s.starboard))/2,wave:clamp(.12+waves*.25,0,1),wind:clamp(wind/32,0,1),port:clamp(1-distance/500,0,1)};
 }
 /** Original procedural synthesis: no downloaded audio, tracking or external service. */
@@ -67,11 +67,11 @@ export class MaritimeAudio {
     if(this.master&&this.context)this.master.gain.setTargetAtTime(this.settings.enabled&&!this.paused?this.settings.master:0,this.context.currentTime,.06);
     if(!this.settings.enabled&&this.context?.state==='running')void this.context.suspend().catch(()=>{});
   }
-  update(s:VesselState,m:Marine,risk:boolean):void {
+  update(s:VesselState,m:Pick<Marine,'waves'|'wind'|'sound'|'warning'|'time'>,risk:boolean,portDistance?:number,engineFactor=1):void {
     const c=this.context;if(!c||this.paused||!this.master)return;
-    const levels=audioLevels(s,m.waves,m.wind),settings=this.settings;
+    const levels=audioLevels(s,m.waves,m.wind,portDistance),settings=this.settings;
     this.master.gain.setTargetAtTime(settings.enabled?settings.master:0,c.currentTime,.1);
-    for(const [key,level] of [['engines',levels.engine*.035],['waves',levels.wave*.13],['wind',levels.wind*.08],['port',levels.port*.06]] as const)this.buses[key]?.gain.setTargetAtTime(level*settings[key],c.currentTime,.1);
+    for(const [key,level] of [['engines',levels.engine*.035*engineFactor],['waves',levels.wave*.13],['wind',levels.wind*.08],['port',levels.port*.06]] as const)this.buses[key]?.gain.setTargetAtTime(level*settings[key],c.currentTime,.1);
     this.engines.forEach((osc,i)=>osc.frequency.setTargetAtTime(36+i*4+Math.abs(i?s.starboard:s.port)*95,c.currentTime,.15));
     if(settings.enabled&&m.sound&&(risk||!!m.warning)&&m.time-this.alarmTime>4){this.alarmTime=m.time;this.horn();}
     if(settings.enabled&&levels.port>.4&&m.time-this.gullTime>14){this.gullTime=m.time;this.tone(1300,800,.6,settings.port*.018);}

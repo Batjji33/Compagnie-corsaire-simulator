@@ -9,14 +9,21 @@ export class BrittanySaintMaloModel {
   readonly exterior = new Group();
   readonly interior = new Group();
   readonly ramps = new Group();
+  private nightLights=new Group();
+  private nightMaterials:MeshStandardMaterial[]=[];
   private textures: CanvasTexture[] = [];
   constructor() {
     this.root.name = 'Brittany Ferries · Saint-Malo';
-    this.root.add(this.exterior, this.interior, this.ramps);this.interior.visible=false;
+    this.root.add(this.exterior, this.interior, this.ramps,this.nightLights);this.interior.visible=false;this.nightLights.visible=false;
     this.exterior.name = 'Enveloppe extérieure'; this.interior.name = 'Volumes intérieurs approximatifs';
     const palette = { white: 0xf2f3ef, navy: 0x171e53, red: 0x8f302a, glass: 0x263d49, deck: 0x939e9c, orange: 0xd64321, rail: 0xd8dfdf, floor: 0x69797d };
     type Paint = keyof typeof palette;
     const materials = Object.fromEntries(Object.entries(palette).map(([key,color]) => [key,new MeshStandardMaterial({color,roughness:key==='glass'?.3:.72})])) as Record<Paint,MeshStandardMaterial>;
+    materials.glass.emissive.setHex(0xffd99a);materials.glass.emissiveIntensity=0;this.nightMaterials.push(materials.glass);
+    // Symbolic navigation lights, with estimated mount positions rather than certified sectors.
+    for(const [x,y,z,color] of [[-13.7,26,-69,0xff2318],[13.7,26,-69,0x24ed6f],[0,12.4,97.1,0xfff0cf]]){
+      const light=new Mesh(new SphereGeometry(.2,8,6),new MeshStandardMaterial({color,emissive:color,emissiveIntensity:2}));light.position.set(x,y,z);this.nightLights.add(light);
+    }
     const batches = new Map<string,{geometries:BufferGeometry[];parent:Group;paint:Paint}>();
     const add = (geometry:BufferGeometry,paint:Paint,parent=this.exterior) => {
       // Consistent attributes allow boxes, circles, spheres and custom lofts to share one draw call.
@@ -32,7 +39,7 @@ export class BrittanySaintMaloModel {
       stations.forEach((station,i)=>{positions.setX(i*4,-station.width/2);positions.setX(i*4+1,station.width/2);});
       geometry.computeVertexNormals();add(geometry,p,parent);
     };
-    // Rounded bilges and flared bow through 21 longitudinal stations and 12 points per section.
+    // Rounded bilges and flared bow through 18 longitudinal stations and 12 points per section.
     const stations=[[-97.35,.12],[-94,2.2],[-90,5.8],[-85,10.3],[-78,17],[-70,22],[-60,25.8],[-48,27.8],[-30,27.8],[-10,27.8],[10,27.8],[30,27.8],[50,27.8],[65,27.8],[78,27.4],[88,26.8],[94,26.2],[97.35,25.8]];
     const shell=(bottom:number,top:number,p:Paint)=>{
       const positions:number[]=[],indices:number[]=[];
@@ -48,11 +55,16 @@ export class BrittanySaintMaloModel {
         const a=s*12+j,b=s*12+(j+1)%12,c=a+12,d=b+12;indices.push(a,b,c,b,d,c);
       }
       for(const end of [0,stations.length-1])for(let j=1;j<11;j++){
+        if(end===stations.length-1&&p==='white')continue;
         const a=end*12;indices.push(...(end===0?[a,a+j+1,a+j]:[a,a+j,a+j+1]));
       }
       const g=new BufferGeometry();g.setAttribute('position',new Float32BufferAttribute(positions,3));g.setIndex(indices);g.computeVertexNormals();add(g,p);
     };
     shell(-6.6,.25,'red');shell(.25,1.8,'navy');shell(1.8,11.7,'white');
+    // Stern apertures align with the two independent Ro-Ro doors.
+    for(const [x,w] of [[-11.45,2.9],[-1,4],[11.45,2.9]])box(x,6.75,97.27,w,9.9,.16,'white');
+    box(0,2.4,97.27,25.8,1.2,.16,'white');box(0,11.05,97.27,25.8,1.3,.16,'white');
+    for(const [x,w] of [[-6.5,7],[5.5,9]])box(x,2.95,9.85,w,.1,175,'deck');
     // Bulb stays within the published overall length.
     add(new SphereGeometry(1,16,10).scale(1.7,1.6,5.2).translate(0,-2,-92.1),'red');
     volume([{z:-97.35,width:.12,bottom:11.65,top:11.8},{z:-85,width:10.3,bottom:11.65,top:11.8},{z:-70,width:22,bottom:11.65,top:11.8},{z:-48,width:27.8,bottom:11.65,top:11.8},{z:97.35,width:25.8,bottom:11.65,top:11.8}],'deck');
@@ -87,6 +99,10 @@ export class BrittanySaintMaloModel {
       for(let z=-89;z<-72;z+=2){const x=(97.35+z)*.37;box(side*x,12.25,z,.08,1,.08,'rail');}
       for(let z=27;z<43;z+=2.1)add(new SphereGeometry(1,8,6).scale(.65,.55,.95).translate(side*12,18.4,z),'white');
     }
+    for(const y of [18,21.2])for(let x=-10;x<=10;x+=2){
+      const z=y<=21?-76+(y-11.7)*6/9.3:-70+(y-21)*4/5.2;
+      add(new PlaneGeometry(1.4,1).rotateY(Math.PI).rotateX(.57).translate(x,y,z-.08),'glass');
+    }
     // Forward panoramic bridge, projecting wings within the vessel's maximum beam.
     volume([{z:-73,width:23,bottom:24.2,top:26.5},{z:-70,width:27.8,bottom:24.2,top:27},{z:-64,width:25.5,bottom:24.2,top:27}],'white');
     for(let x=-10.5;x<=10.5;x+=2.1)box(x,25.55,-73.05,1.7,1.4,.09,'glass');
@@ -108,7 +124,7 @@ export class BrittanySaintMaloModel {
       for(const x of [-7,7])box(x,y+1.7,5,.2,3.4,150,'white',floor);
       for(const z of [-50,30,65])box(0,y+1.7,z,3,3.4,4,'deck',floor);
     }
-    // Separate origin at stern sill: future animation can rotate these groups, no vehicle logic.
+    // Separate stern pivots support inspection and the service's progressive ramp animation.
     for(const [x,w] of [[-6.5,7],[5.5,9]]){
       const pivot=new Group();pivot.name='Rampe arrière · charnière';pivot.position.set(x,3,97.35);this.ramps.add(pivot);
       box(0,3.7,-.25,w,7.4,.4,'deck',pivot);
@@ -135,8 +151,10 @@ export class BrittanySaintMaloModel {
       label('',10,4,side*6.02,30,44,side,true);
     }
   }
+  setNight(value:number):void {for(const material of this.nightMaterials)material.emissiveIntensity=Math.max(0,Math.min(1,value))*.65;this.nightLights.visible=value>.3;}
   setCutaway(value:boolean):void {this.exterior.visible=!value;this.interior.visible=value;}
-  setRamps(open:boolean):void {for(const ramp of this.ramps.children)ramp.rotation.x=open?Math.PI*.52:0;}
+  setRampProgress(value:number):void {for(const ramp of this.ramps.children)ramp.rotation.x=Math.max(0,Math.min(1,value))*Math.PI/2;}
+  setRamps(open:boolean):void {this.setRampProgress(open?1:0);}
   dispose():void {
     const geometries=new Set<BufferGeometry>(),materials=new Set<Material>();
     this.root.traverse(o=>{if(o instanceof Mesh){geometries.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material])materials.add(m);}});

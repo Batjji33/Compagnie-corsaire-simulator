@@ -20,7 +20,7 @@ export class WakeTrail {
     this.elapsed=0;
     const sin=Math.sin(s.heading),cos=Math.cos(s.heading),direction=s.surge<-.15?-1:1;
     const vx=sin*s.surge+cos*s.sway,vz=-cos*s.surge+sin*s.sway;
-    Object.assign(this.samples[this.head],{x:s.x-sin*this.parameters.length*.48*direction,z:s.z+cos*BOAT.length*.48*direction,dx:vx/speed,dz:vz/speed,time,speed,power:clamp((Math.abs(s.port)+Math.abs(s.starboard))/2,0,1)});
+    Object.assign(this.samples[this.head],{x:s.x-sin*this.parameters.length*.48*direction,z:s.z+cos*this.parameters.length*.48*direction,dx:vx/speed,dz:vz/speed,time,speed,power:clamp((Math.abs(s.port)+Math.abs(s.starboard))/2,0,1)});
     this.head=(this.head+1)%WAKE_CAPACITY;this.count=Math.min(WAKE_CAPACITY,this.count+1);
   }
 }

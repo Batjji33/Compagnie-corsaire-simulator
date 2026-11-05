@@ -1,4 +1,5 @@
-﻿import { AmbientLight, Color, DirectionalLight, PerspectiveCamera, Scene, WebGLRenderer } from 'three';
+import { rendererLifetime } from '../world/RendererLifetime';
+import { AmbientLight, Color, DirectionalLight, PerspectiveCamera, Scene, WebGLRenderer } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { BrittanySaintMaloModel } from '../ships/BrittanySaintMaloModel';
 import { BRITTANY_SAINT_MALO, COMPANIES } from '../ships/companies';
@@ -23,7 +24,7 @@ export function inspectBrittanyFerry():void {
   const scene=new Scene();scene.background=new Color(0xc5d4db);
   scene.add(new AmbientLight(0xffffff,2));
   const sun=new DirectionalLight(0xfff8ed,3);sun.position.set(-90,150,-100);scene.add(sun);
-  const model=new BrittanySaintMaloModel();scene.add(model.root);
+  const model=new BrittanySaintMaloModel();const releaseRendererTextures=rendererLifetime(model.exterior);scene.add(model.root);
   const camera=new PerspectiveCamera(40,1,.2,1500);
   const controls=new OrbitControls(camera,canvas);controls.minDistance=10;controls.maxDistance=650;controls.target.set(0,13,0);
   const render=()=>renderer.render(scene,camera);
@@ -42,6 +43,6 @@ export function inspectBrittanyFerry():void {
   });
   dialog.addEventListener('change',()=>{model.setCutaway(dialog.querySelector<HTMLInputElement>('[data-cut]')!.checked);model.setRamps(dialog.querySelector<HTMLInputElement>('[data-ramp]')!.checked);render();});
   canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();const error=dialog.querySelector<HTMLElement>('[data-error]')!;error.hidden=false;error.textContent='Contexte graphique perdu. Fermez puis rouvrez cette inspection.';});
-  dialog.addEventListener('close',()=>{observer.disconnect();controls.dispose();model.dispose();renderer.dispose();renderer.forceContextLoss();dialog.remove();previous?.focus();},{once:true});
+  dialog.addEventListener('close',()=>{observer.disconnect();controls.dispose();releaseRendererTextures();model.dispose();renderer.dispose();renderer.forceContextLoss();dialog.remove();previous?.focus();},{once:true});
   resize();view('perspective');dialog.querySelector<HTMLButtonElement>('[data-close]')!.focus();
 }

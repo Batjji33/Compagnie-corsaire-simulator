@@ -439,3 +439,36 @@ footer { z-index: 4; inset: auto var(--right) var(--bottom) var(--left); display
 .crew-status{padding-left:20px;font-size:14px;line-height:1.7;}
 .incident-consequences{font-variant-numeric:tabular-nums;line-height:1.6;}
 @media(max-width:600px){.incident-card button{width:100%;}.incident-panel select{width:100%;}}
+/* The helm stays visible while instruments scroll independently. */
+.channel-voyage{height:94dvh;max-height:94dvh;display:flex;flex-direction:column;overflow:hidden;gap:8px;}
+.channel-voyage header{flex:none;}
+.channel-voyage header p{margin-bottom:0;}
+.channel-views{flex:1;min-height:200px;position:relative;grid-template-columns:minmax(0,1fr) 300px;}
+.channel-views [data-scene]{height:100%;min-height:0;}
+.channel-views aside{overflow-y:auto;overscroll-behavior:contain;padding:0 8px;display:block;}
+.channel-views [data-chart]{height:auto;max-height:180px;object-fit:contain;}
+.channel-service h3{font-size:16px;margin:0 0 6px;}
+.channel-service p{white-space:pre-line;font-size:13px;line-height:1.45;}
+.channel-service button{width:100%;}
+.channel-controls{position:static;inset:auto;display:block;pointer-events:auto;flex:none;border-top:1px solid #b6c5ca;}
+.channel-controls nav{margin:6px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.channel-controls nav label{padding:0;min-height:44px;}
+.channel-controls .ferry-helm{margin:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
+.channel-controls .ferry-helm label{padding:0;font-size:13px;min-height:0;}
+.channel-controls .ferry-helm input[type=range]{margin:0;}
+.channel-options>label{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:8px 0;}
+.channel-options summary,.incident-panel summary{min-height:44px;cursor:pointer;}
+.channel-options output{font-size:12px;}
+.channel-footnote{display:none;}
+.channel-voyage [data-instruments]{display:none;}
+@media(max-width:850px){.channel-views{grid-template-columns:minmax(0,1fr) 240px;}.channel-voyage h2{font-size:18px;}}
+@media(max-width:600px){
+ .channel-voyage{width:98vw;padding:8px;gap:6px;}.channel-views{grid-template-columns:1fr;min-height:160px;}
+ .channel-views aside{display:none;position:absolute;inset:0 0 0 auto;width:min(310px,92%);background:#f5f7f7;border:1px solid #a9b9c0;z-index:5;padding:10px;}
+ .channel-voyage.instruments-open .channel-views aside{display:block;}
+ .channel-voyage [data-instruments]{display:block;}
+ .channel-controls .ferry-helm{grid-template-columns:1fr 1fr;gap:2px 12px;}
+ .channel-controls nav button{padding:6px 8px;}.channel-controls nav label{font-size:12px;}.channel-controls nav{gap:4px;}
+ .channel-controls .ferry-helm label{font-size:12px;gap:0;}
+ .channel-voyage header p{font-size:12px;}
+}

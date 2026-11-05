@@ -79,3 +79,10 @@ export function navigationZone(x:number,z:number):'port'|'approach'|'offshore'{
 }
 /** Conservative game depth, no bathymetric survey or tide corrections. */
 export function channelDepth(x:number,z:number):number {return channelContact(x,z)?0:navigationZone(x,z)==='offshore'?60:12;}
+
+/** Nearest point along the authored route, usable in either direction. */
+export function routeProgress(x:number,z:number):number {
+ let best=Infinity,progress=0;
+ for(let i=1;i<CHANNEL_ROUTE.length;i++){const a=CHANNEL_ROUTE[i-1],b=CHANNEL_ROUTE[i],dx=b[0]-a[0],dz=b[1]-a[1],length=Math.hypot(dx,dz),t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/(length*length)));const distance=Math.hypot(x-a[0]-dx*t,z-a[1]-dz*t);if(distance<best){best=distance;progress=ROUTE_DISTANCES[i-1]+length*t;}}
+ return progress;
+}

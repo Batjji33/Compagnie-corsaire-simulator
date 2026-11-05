@@ -51,3 +51,21 @@ Captures du simulateur : [poste central](images/saint-malo-bridge-central.jpg), 
 Contrôles navigateur : trois postes, charge effective et verrouillages, changement de poste en marche, curseur tactile et flèche clavier, retour au menu et captures desktop/tablette/mobile. La revue automatique de lancement a été indisponible en fin de session précédente ; ces vérifications ont été reprises le 5 novembre.
 
 Validation finale : **build réussi, 165 tests réussis, 0 échec**. Compatibilité de compilation Safari 15 vérifiée ; usage iPad physique non testé. Le module de pilotage est chargé à la demande (~40 kB minifiés / ~15,5 kB gzip) ; l'avertissement de taille du bundle principal reste non bloquant.
+
+## Service jouable et finition de phase 7
+
+Les deux entrées du menu démarrent désormais à leur poste de départ, amarres en place. Dans le panneau Traversée : embarquer, démarrer le temps, attendre la fermeture des rampes, débrancher le quai puis larguer les amarres. Le manifeste de jeu est de 420 passagers et 80 véhicules ; il ne prétend pas représenter la capacité commerciale réelle. Les transferts prennent 320/240 secondes simulées, après 30 secondes d'ouverture de rampe ; la fermeture dure encore 30 secondes. Une perturbation du terminal suspend les transferts et le départ. La pause suspend également ces opérations.
+
+`ChannelFerryService` est indépendant du DOM et réutilise `Passengers`. `ChannelNavigation` coordonne amarrage, énergie, équipage, trafic, horloge et sillage dans les mêmes sous-pas de 0,1 s. Un navire amarré ne dérive pas, consomme son énergie hôtelière et peut charger. Les commandes de propulsion sont verrouillées pendant l'amarrage ou le raccordement électrique. La reconnaissance guidée historique reste réservée aux tests ; elle n'est pas le pilotage proposé au joueur.
+
+À destination : distance au poste <35 m, cap à ±10°, vitesse fond <0,2 m/s, vitesse dans l'eau <0,7 m/s, faible rotation et commandes neutres. Le poste doit être libre et accessible. L'assistance d'amarrage immobilise la position courante, sans la recaler ni téléporter le navire. Débarquer, attendre la fermeture, puis préparer le retour conserve position, énergie, horloge et conséquences des incidents. La distance restante est projetée sur la route dans le sens courant ; elle ne mesure pas la distance minimale réelle si le joueur s'en écarte.
+
+`FerryLoadingView` utilise des instances à l'échelle métrique : voitures de 4,5 × 1,8 m et silhouettes de 1,7 m, représentatives du manifeste. Les flux en boucle, les raccordements de quai et les garages sont schématiques. Ils ne constituent pas un système individuel de circulation routière ni une reconstitution des dispositifs Ro-Ro réels.
+
+La sauvegarde v1 ajoute un bloc de service optionnel validé, l'heure, le temps simulé, le confort passagers, l'état effectif du propulseur et le temps de physique. Les sauvegardes antérieures restent en pilotage libre ; lancer une nouvelle traversée active le service. Les deux emplacements correspondent aux entrées du menu, y compris lorsqu'une session a ensuite préparé un retour. La reprise se fait en pause et débranchée du quai.
+
+`ChannelQuality` commence en qualité légère sur les appareils déclarant au plus quatre cœurs, équilibrée autrement. Le mode automatique peut réduire la qualité si les images effectivement rendues restent sous 26 FPS, avec hystérésis de dix secondes. Il ne remonte pas automatiquement la qualité. Le joueur peut choisir léger/équilibré/élevé. Le DPR est plafonné à 1/1,25/1,5 ; le maillage d'eau et les détails de baie suivent le réglage. Le rendu vise 30 images/s et les instruments 5 Hz. Aucun objectif iPad n'est certifié.
+
+`RendererLifetime` traite une rétention constatée sur Three r186 : la texture globale DFG LUT gardait les contextes des dialogues fermés. Le hook public `onBeforeCompile` capture son uniforme ; la fermeture libère cette texture et ses écouteurs par contexte. Le rendu Corsaire la recharge ensuite à sa prochaine image. Aucun fichier de dépendance n'est modifié. Ce contournement et les réouvertures devront être revérifiés à chaque mise à niveau de Three.
+
+Résultats et limites actuels : [audit final de phase 7](BRITTANY_FERRIES_FINAL_AUDIT.md). Les résultats historiques de phase 4 ci-dessus restent des mesures de cette phase.
