@@ -417,3 +417,11 @@ footer { z-index: 4; inset: auto var(--right) var(--bottom) var(--left); display
 .channel-voyage input[type=range] {width:180px;}
 @media(max-width:850px){.channel-views {grid-template-columns:minmax(0,1fr) 200px;}.channel-views [data-scene]{height:45vh;}}
 @media(max-width:600px){.channel-views {grid-template-columns:1fr;}.channel-views [data-scene]{height:38vh;min-height:240px;}.channel-views aside{display:grid;grid-template-columns:1fr 1fr;gap:8px;}.channel-views [data-chart]{grid-row:span 3;}.channel-views output{margin:0;font-size:12px;}}
+.ferry-helm,.ferry-energy-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:12px;}
+.ferry-helm label{display:flex;flex:1 1 190px;flex-direction:column;gap:8px;}
+.ferry-helm input[type=range]{width:100%;min-height:44px;touch-action:pan-y;}
+.ferry-energy{margin-top:12px;border-top:1px solid #a6b6bd;padding-top:10px;}
+.ferry-energy summary{cursor:pointer;min-height:44px;}
+.ferry-energy output{display:block;white-space:pre-line;line-height:1.6;font-variant-numeric:tabular-nums;padding:8px 12px;background:#e4ebed;}
+.ferry-energy p{font-size:13px;}
+.channel-voyage{max-height:94dvh;overflow:auto;}

@@ -1,7 +1,7 @@
 # Brittany Ferries — progression
 
 ## Périmètre
-Phase 2 uniquement. Branche `feature/brittany-ferries`. Aucune modification de develop.
+Phases 2 à 4. Branche `feature/brittany-ferries`. Aucune modification de develop.
 
 ## Architecture examinée
 - Three.js / TypeScript / Vite, une unité = un mètre.
@@ -77,3 +77,27 @@ Décisions : aucun changement global des distances Corsaire ; extension accessib
 Limites : géographie Corsaire locale approximative conservée, fond régional à petite échelle (1:10 millions), ports et relief interprétés, profondeurs et balisage fictifs. Requête Overpass refusée (HTTP 406), aucune donnée de cette requête utilisée. iPad physique indisponible. L'interface et la documentation indiquent explicitement que les cartes ne servent pas à la navigation réelle.
 
 Validation finale phase 3 : `npm run build` réussi (TypeScript + Vite, cible Safari 15) ; `npm test` : **156 réussis, 0 échec**. Avertissement non bloquant du bundle principal > 650 kB conservé. Module de reconnaissance chargé à la demande : environ 28 kB minifiés / 11,4 kB gzip. `git diff --check` sans erreur. Captures et détails de reproduction dans [CHANNEL.md](CHANNEL.md).
+
+## Phase 4 — Physique, propulsion hybride et passerelle (5 novembre 2026)
+
+- [x] `FerryDynamics` : calibration dédiée au ferry, inertie de grand navire, deux moteurs indépendants, réponse progressive, inversion différée, traînées et gouvernail limité en vitesse. Physique Corsaire réutilisée sans modifier ses constantes.
+- [x] Réponse au vent, courant et houle ; flottabilité amortie du grand ferry ; propulseurs d'étrave progressifs et moins efficaces avec l'erre.
+- [x] `HybridPlant` : modes électrique, GNL et combiné ; suivi kWh/kg, réserve de carburant, puissance limitée par les sources, transition thermique, épuisement et recharge conditionnelle à quai.
+- [x] Caractéristiques publiques vérifiées : moteurs thermiques 2 × 13 740 kW, électriques 2 × 4 800 kW, batterie 11,2 MWh, propulseurs 2 × 2 400 + 600 kW. Paramètres énergétiques non publiés identifiés comme estimations.
+- [x] `FerryBridge` : passerelle panoramique inspirée d'une photographie réelle, poste central et deux ailerons, consoles et écrans utilisant les données du simulateur. Changement de poste en marche sans réinitialisation.
+- [x] Radar côtier, carte, GPS, cap, vitesse fond/dans l'eau, sondeur de jeu, garde sous quille, barre, rotation et données moteurs/énergie.
+- [x] Commandes séparées bâbord/tribord, gouvernail et étrave ; sélecteur de propulsion et conditions de scénario ; retour au neutre ; verrouillage immédiat pendant la charge.
+- [x] Repères typés pour de futures caméras d'accostage ; aucune caméra vidéo ni phase suivante développée.
+- [x] Tests de manœuvre à basse vitesse, croisière, freinage/giration, modes énergétiques, panne de sources, recharge et continuité des trajectoires.
+
+### Décisions et limites
+Le mode accessible depuis le menu commence désormais au pilotage manuel en temps réel. L'ancien parcours guidé subsiste pour les tests de géographie. La centrale est un bilan énergétique agrégé : groupes GNL, convertisseurs et transferts entre arbres ne sont pas simulés composant par composant. Les coefficients de coque, rendements, consommation, masse déplacée estimée et puissance de quai sont documentés dans [FERRY_PILOTING.md](FERRY_PILOTING.md). Pas de données d'essais constructeur pour certifier le rayon ou l'arrêt. L'implantation de la passerelle reste interprétée sans plans.
+
+Le courant de scénario intervient dans la vitesse fond et les conditions de raccordement. Les contacts arrêtent le navire avant l'obstacle, sans déformation de coque. Les cartes/profondeurs restent fictives. Safari/iPad physique n'est pas disponible pour validation ; l'ergonomie tactile est vérifiée par émulation en navigateur, sans prétendre à une certification sur appareil.
+
+### Contrôle visuel et commandes
+Captures examinées aux formats 1440 × 900, 768 × 1024 et 390 × 844. Poste central et deux ailerons, retour au menu, charge effective, verrouillage/déverrouillage contrôlés. Test tactile : curseur bâbord passé à 0,65 ; clavier : flèche droite à 0,70. Les changements de poste conservent commandes et navigation. Corrections après examen : dégagement des vues latérales, position centrale, initialisation des textures cartographiques avant la première image et libération immédiate des commandes au débranchement.
+
+L'arrêt précédent venait d'une indisponibilité du service de revue automatique (quota), qui empêchait un dernier lancement de navigateur. La reprise du 5 novembre a permis les vérifications restantes.
+
+Résultat final phase 4 : **`npm run build` réussi et 165 tests réussis, aucun échec**. Avertissement non bloquant du bundle principal > 650 kB conservé. Le module de pilotage et passerelle est chargé à la demande (~40 kB minifiés, ~15,5 kB gzip). Aucune dépendance ajoutée. Catalogue Brittany Ferries marqué pilotable ; les missions Corsaire gardent leur catalogue historique.

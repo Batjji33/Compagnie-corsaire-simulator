@@ -25,7 +25,7 @@ test('navigation zones clamp accelerated time and manual mode returns to real ti
 test('manual movement is swept in small steps and stops before land',()=>{
  const nav=new ChannelNavigation();nav.takeHelm();nav.dynamics.reset({x:800,z:800,heading:Math.PI/2});nav.state.surge=12;nav.running=true;
  for(let i=0;i<500;i++){nav.advance(.1);if(!nav.running)break;}
- assert.equal(nav.running,false);assert.ok(nav.collision);assert.equal(ferryContact(nav.state.x,nav.state.z,nav.state.heading),undefined);
+ assert.equal(nav.running,false);assert.ok(nav.collision);assert.equal(nav.dynamics.groundSpeed,0);assert.equal(ferryContact(nav.state.x,nav.state.z,nav.state.heading),undefined);
 });
 test('regional land data is finite and no changes to legacy land are needed',()=>{
  assert.ok(CHANNEL_LANDS.length>=15);for(const l of CHANNEL_LANDS){assert.ok(l.outline.length>=3);assert.ok(l.outline.every(p=>p.every(Number.isFinite)));}

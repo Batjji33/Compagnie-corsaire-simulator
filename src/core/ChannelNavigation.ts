@@ -1,17 +1,22 @@
-﻿import { CHANNEL_LENGTH, ferryContact, navigationZone, routePose } from '../world/ChannelGeography.ts';
-import { VesselDynamics } from '../physics/VesselDynamics.ts';
-import { BOAT, KNOT } from '../ships/parameters.ts';
-/** Geography reconnaissance, not a validated Saint-Malo handling model. */
+﻿import { CHANNEL_LENGTH, ferryContact, CHANNEL_BERTHS, navigationZone, routePose } from '../world/ChannelGeography.ts';
+import { FerryDynamics } from '../physics/FerryDynamics.ts';
+import { KNOT } from '../ships/parameters.ts';
+/** Legacy guided reconnaissance plus a separately powered, ferry-only manual simulation. */
 export class ChannelNavigation {
- readonly dynamics=new VesselDynamics(routePose(0));
+ readonly dynamics=new FerryDynamics(routePose(0));
  distance=0;
  requestedRate=1;
  running=false;
  guided=true;
  collision='';
- constructor(){
-  this.dynamics.parameters={...BOAT,length:194.7,beam:27.8,draft:6.6,maxSpeedKnots:23,mass:20_000_000,yawInertia:70_000_000_000,engineThrust:1_000_000,engineArm:9,engineResponse:4,surgeLinearDrag:20000,swayLinearDrag:6_000_000,swayQuadraticDrag:2_000_000,yawLinearDrag:9_000_000_000,yawSpeedDrag:1_000_000_000,yawQuadraticDrag:80_000_000_000,rudderLift:400_000,rudderArm:70};
+
+ get canCharge():boolean {
+  const s=this.state,c=this.dynamics.command,e=this.dynamics.environment;
+  const current=e.currentKnots*KNOT,angle=e.currentTo*Math.PI/180;
+  const groundSpeed=Math.hypot(Math.sin(s.heading)*s.surge+Math.cos(s.heading)*s.sway+Math.sin(angle)*current,-Math.cos(s.heading)*s.surge+Math.sin(s.heading)*s.sway-Math.cos(angle)*current);
+  return !this.guided&&CHANNEL_BERTHS.some(b=>Math.hypot(s.x-b.point[0],s.z-b.point[1])<100&&Math.abs(Math.atan2(Math.sin(s.heading-b.heading),Math.cos(s.heading-b.heading)))<Math.PI/12)&&Math.hypot(s.surge,s.sway)<.15&&groundSpeed<.15&&Math.abs(this.dynamics.bowActual)<.02&&Math.abs(s.yawRate)<.001&&Math.abs(c.port)+Math.abs(c.starboard)+Math.abs(this.dynamics.bowCommand)<.01&&Math.abs(s.port)+Math.abs(s.starboard)<.02;
  }
+ toggleCharge():boolean {const p=this.dynamics.plant;if(p.shore){p.shore=false;return true;}if(!this.canCharge)return false;p.shore=true;return true;}
  get state(){return this.dynamics.state;}
  get zone(){return navigationZone(this.state.x,this.state.z);}
  get rate(){return this.guided?Math.min(this.requestedRate,this.zone==='port'?4:this.zone==='approach'?16:128):1;}
@@ -31,7 +36,7 @@ export class ChannelNavigation {
     if(next===CHANNEL_LENGTH){this.state.surge=0;this.running=false;}
    }else{
     this.dynamics.step(dt);const s=this.state,hit=ferryContact(s.x,s.z,s.heading);
-    if(hit){Object.assign(s,old,{surge:0,sway:0,yawRate:0});this.dynamics.setCommand({port:0,starboard:0,rudder:0});this.collision=hit;this.running=false;return;}
+    if(hit){Object.assign(s,old,{surge:0,sway:0,yawRate:0});this.dynamics.setCommand({port:0,starboard:0,rudder:0});this.dynamics.bowCommand=0;this.dynamics.groundSpeed=0;this.collision=hit;this.running=false;return;}
    }
   }
  }

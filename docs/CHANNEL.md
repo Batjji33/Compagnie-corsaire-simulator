@@ -1,5 +1,7 @@
 ﻿# Manche — géographie et reconnaissance (phase 3)
 
+Depuis la phase 4, cet écran démarre directement en pilotage manuel avec propulsion hybride et passerelle. Voir [le guide de pilotage actuel](FERRY_PILOTING.md). La description ci-dessous conserve les décisions et validations de la phase géographique.
+
 ## Accès
 Menu principal → **Saint-Malo – Portsmouth**. Choisir le départ du Naye ou une reconnaissance de l'approche de Portsmouth **avant** de charger la vue. Démarrer le parcours guidé, mettre en pause, tourner/zoomer la caméra, afficher le radar côtier, ou prendre la barre avec moteurs et gouvernail. Fermer revient à la partie Corsaire en pause, sans modifier sa sauvegarde. La reconnaissance n'est pas sauvegardée.
 
