@@ -13,11 +13,14 @@ export class FerryDynamics extends VesselDynamics {
  readonly plant=new HybridPlant();
  bowCommand=0;bowActual=0;
  environment={windKnots:8,windFrom:250,currentKnots:.25,currentTo:70,waves:.6};
+ stormBoost=false;stormBlend=0;
+ get weather(){const e=this.environment;return {...e,windKnots:e.windKnots+(Math.max(30,e.windKnots)-e.windKnots)*this.stormBlend,waves:e.waves+(Math.max(3,e.waves)-e.waves)*this.stormBlend};}
  elapsed=0;groundSpeed=0;
  constructor(spawn?:{x:number;z:number;heading:number}){super(spawn);this.parameters=FERRY_PARAMETERS;}
  override step(dt:number,external:ExternalForce={x:0,z:0,yaw:0}):void{
   if(!Number.isFinite(dt)||dt<=0||dt>.1)throw new Error('Ferry step must be in (0,.1]');
-  const s=this.state,e=this.environment,angle=Math.PI/180,sin=Math.sin(s.heading),cos=Math.cos(s.heading);
+  this.stormBlend+=((this.stormBoost?1:0)-this.stormBlend)*(1-Math.exp(-dt/120));
+  const s=this.state,e=this.weather,angle=Math.PI/180,sin=Math.sin(s.heading),cos=Math.cos(s.heading);
   this.bowActual+=(clamp(this.bowCommand,-1,1)-this.bowActual)*(1-Math.exp(-dt/3));
   const shaft=(Math.abs(s.port)+Math.abs(s.starboard))*13740*Math.max(.18,Math.abs(s.surge)/(23*KNOT));
   const aux=Math.abs(this.bowActual)*HYBRID_SPEC.thrusterKW;

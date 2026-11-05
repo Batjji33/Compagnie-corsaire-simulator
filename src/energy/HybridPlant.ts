@@ -3,6 +3,7 @@ export type PropulsionMode='electric'|'lng'|'hybrid';
 /** Published ratings; efficiencies, hotel load, fuel inventory and charge rate are simulation estimates. */
 export const HYBRID_SPEC={batteryKWh:11200,thermalKW:27480,electricKW:9600,thrusterKW:5400,hotelKW:800,shoreKW:6000,efficiency:.94,kgPerKWh:.16} as const;
 export class HybridPlant {
+ thermalHealth=1;electricHealth=1;
  private thermalReadiness=1;
  mode:PropulsionMode='hybrid';batteryKWh=8960;fuelKg=200000;shore=false;
  deliveredKW=0;batteryKW=0;thermalKW=0;fuelKgHour=0;chargeKW=0;availableKW=0;enginesOnline=0;
@@ -13,8 +14,8 @@ export class HybridPlant {
   this.thermalKW=this.batteryKW=this.chargeKW=this.deliveredKW=this.fuelKgHour=0;this.enginesOnline=0;
   if(this.shore){this.availableKW=0;this.chargeKW=Math.min(s.shoreKW-s.hotelKW,(s.batteryKWh-this.batteryKWh)*3600/dt/s.efficiency);this.batteryKWh=Math.min(s.batteryKWh,this.batteryKWh+this.chargeKW*s.efficiency*dt/3600);return 0;}
   const target=this.mode==='electric'||this.fuelKg<=0?0:1;this.thermalReadiness+=(target-this.thermalReadiness)*(1-Math.exp(-dt/20));
-  const batteryLimit=Math.min(s.electricKW,this.batteryKWh*3600/dt*s.efficiency);
-  const thermalLimit=this.mode==='electric'?0:Math.min(s.thermalKW*this.thermalReadiness,this.fuelKg*3600/dt/s.kgPerKWh);
+  const batteryLimit=Math.min(s.electricKW*this.electricHealth,this.batteryKWh*3600/dt*s.efficiency);
+  const thermalLimit=this.mode==='electric'?0:Math.min(s.thermalKW*this.thermalReadiness*this.thermalHealth,this.fuelKg*3600/dt/s.kgPerKWh);
   const electricLimit=this.mode==='lng'?0:batteryLimit;
   // Shared shaft rating: combined mode displaces fuel, it does not add unlimited shaft power.
   this.availableKW=Math.max(0,Math.min(s.thermalKW,thermalLimit+electricLimit)-s.hotelKW-auxKW);

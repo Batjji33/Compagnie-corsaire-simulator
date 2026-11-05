@@ -1,7 +1,7 @@
 # Brittany Ferries — progression
 
 ## Périmètre
-Phases 2 à 4. Branche `feature/brittany-ferries`. Aucune modification de develop.
+Phases 2 à 6. Branche `feature/brittany-ferries`. Aucune modification de develop.
 
 ## Architecture examinée
 - Three.js / TypeScript / Vite, une unité = un mètre.
@@ -117,3 +117,22 @@ Décision : la Manche reçoit `ChannelTraffic`, en partageant types, prévision,
 La phase suivante n'est pas commencée ; aucune fusion dans develop et aucun déploiement.
 
 Validation finale phase 5 : `npm run build` réussi ; **174 tests réussis, 0 échec**, dont les missions et accostages Corsaire. Avertissement non bloquant du bundle principal > 650 kB conservé. Module Manche chargé à la demande : environ 47,2 kB minifiés / 18,2 kB gzip. `git diff --check` sans erreur. Aucun test Safari/iPad physique et aucun déploiement.
+
+## Phase 6 — Incidents dynamiques et équipage
+
+- [x] Analyse du trafic de phase 5, de l'énergie, de l'horloge et du suivi existants.
+- [x] Catalogue modulaire de onze catégories, contexte météo/position/trafic/état du ferry, incompatibilités, rareté des événements graves et périodes calmes ; fréquence et difficulté réglables.
+- [x] Interactions propres à chaque catégorie, choix d'équipes, conditions de manœuvre et étapes ; aucune commande universelle de résolution.
+- [x] Équipes technique, navigation et assistance passagers ; affectations exclusives, délais, rappels, issues achevées/partielles/échouées et soutien extérieur évitant un blocage permanent.
+- [x] Capacités moteur et électrique réduites réellement, météo d'un grain progressive, recharge empêchée au terminal perturbé, retard/tension/suivis médicaux/cabines persistants.
+- [x] Animations symboliques non graphiques : équipes, secteurs, fumée, hélicoptère, marqueur et assistance. Les urgences sont des scénarios fictifs de coordination.
+- [x] Panneau HUD repliable, réglages secondaires, journal, progression et sauvegarde locale de la traversée ; reprise en pause et nouvelle session explicite.
+- [x] Scénarios reproductibles et tests d'incidents simultanés, ressources, conséquences, sauvegardes invalides et horloge ×1/×2/×4/×8.
+
+Décisions : moteur indépendant du DOM et définitions extensibles ; intégration dans les sous-pas existants du ferry. Les missions Corsaire gardent leurs systèmes. La persistance du ferry utilise un emplacement local séparé pour chaque point de départ, sans modifier les sauvegardes Corsaire. Limites, durées et conséquences : [INCIDENTS.md](INCIDENTS.md).
+
+Contrôle navigateur : exercice cabine, délégation, progression ×8, fermeture/reprise avec tâche conservée, remise à zéro ; captures 1440/768/390 px examinées. Corrections : estimation des choix recalculée après changement de difficulté, réévaluation des conditions d'approche du marqueur et ouverture d'une nouvelle traversée après fermeture effective de l'ancienne. Safari/iPad physique non testé. Aucun conseil médical ou protocole opérationnel réel n'est fourni.
+
+Aucune phase suivante commencée, aucune fusion dans develop, aucun déploiement.
+
+Validation finale phase 6 : `npm run build` réussi ; **185 tests réussis, 0 échec**, dont les scénarios d'incidents et les régressions Corsaire. `git diff --check` sans erreur. Avertissement non bloquant du bundle principal > 650 kB conservé ; module Manche chargé à la demande ~73 kB minifiés / ~26,7 kB gzip. Aucune dépendance ajoutée. Chaque nouvelle traversée reçoit une graine locale différente ; sa sauvegarde conserve le générateur pour la reprise.

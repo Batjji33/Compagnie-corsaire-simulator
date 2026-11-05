@@ -1,0 +1,18 @@
+﻿import type {ChannelNavigation} from '../core/ChannelNavigation';
+import type {VesselState,HelmCommand} from '../physics/VesselDynamics';
+const key=(north:boolean)=>'brittany-voyage-v1-'+(north?'north':'south');
+export interface VoyageStorage {getItem(key:string):string|null;setItem(key:string,value:string):void;removeItem(key:string):void;}
+export function saveVoyage(n:ChannelNavigation,north:boolean,storage:VoyageStorage):boolean {
+ try{storage.setItem(key(north),JSON.stringify({version:1,storm:n.dynamics.stormBlend,pose:n.state,command:n.dynamics.command,bow:n.dynamics.bowCommand,environment:n.dynamics.environment,energy:{battery:n.dynamics.plant.batteryKWh,fuel:n.dynamics.plant.fuelKg,mode:n.dynamics.plant.mode},incidents:n.incidents.snapshot(),distance:n.distance,rate:n.requestedRate,trafficTime:n.traffic.elapsed,traffic:n.traffic.agents.map(a=>({id:a.route.id,x:a.x,z:a.z,heading:a.heading,speed:a.speed,target:a.target,yawRate:a.yawRate}))}));return true;}catch{return false;}
+}
+export function restoreVoyage(n:ChannelNavigation,north:boolean,storage:VoyageStorage):boolean {
+ try{const raw=storage.getItem(key(north));if(!raw)return false;const s=JSON.parse(raw),finite=(v:unknown,min:number,max:number)=>typeof v==='number'&&Number.isFinite(v)&&v>=min&&v<=max;
+  if(s.version!==1||!finite(s.storm,0,1)||!s.pose||!s.command||!s.environment||!s.energy||!finite(s.distance,0,400000)||![1,2,4,8].includes(s.rate)||!finite(s.bow,-1,1)||!finite(s.trafficTime,0,1e8))return false;
+  const p=s.pose as VesselState,c=s.command as HelmCommand;if(!finite(p.x,-500000,500000)||!finite(p.z,-500000,500000)||!finite(p.heading,-1e7,1e7)||!finite(p.surge,-50,50)||!finite(p.sway,-50,50)||!finite(p.yawRate,-1,1)||!finite(p.port,-1,1)||!finite(p.starboard,-1,1)||!finite(p.rudder,-1,1)||!finite(c.port,-1,1)||!finite(c.starboard,-1,1)||!finite(c.rudder,-1,1))return false;
+  const e=s.environment;if(!finite(e.windKnots,0,70)||!finite(e.windFrom,0,360)||!finite(e.currentKnots,0,5)||!finite(e.currentTo,0,360)||!finite(e.waves,0,8)||!finite(s.energy.battery,0,11200)||!finite(s.energy.fuel,0,1e6)||!['electric','lng','hybrid'].includes(s.energy.mode))return false;
+  if(!Array.isArray(s.traffic)||s.traffic.length!==n.traffic.agents.length||s.traffic.some((a:{id:string;x:number;z:number;heading:number;speed:number;target:number;yawRate:number},i:number)=>a.id!==n.traffic.agents[i].route.id||!finite(a.x,-500000,500000)||!finite(a.z,-500000,500000)||!finite(a.heading,-1e7,1e7)||!finite(a.speed,0,50)||!Number.isInteger(a.target)||a.target<0||a.target>=n.traffic.agents[i].route.points.length||!finite(a.yawRate,-1,1)))return false;
+  if(!n.incidents.restore(s.incidents))return false;n.dynamics.restore(p,c);n.dynamics.bowCommand=s.bow;Object.assign(n.dynamics.environment,e);n.dynamics.plant.batteryKWh=s.energy.battery;n.dynamics.plant.fuelKg=s.energy.fuel;n.dynamics.plant.mode=s.energy.mode;n.dynamics.plant.shore=false;n.distance=s.distance;n.requestedRate=s.rate;n.dynamics.stormBlend=s.storm;n.dynamics.stormBoost=n.incidents.modifiers.storm;n.dynamics.elapsed=n.incidents.state.time;n.running=false;n.traffic.elapsed=s.trafficTime;
+  s.traffic.forEach((a:{x:number;z:number;heading:number;speed:number;target:number;yawRate:number},i:number)=>{const b=n.traffic.agents[i];Object.assign(b,{x:a.x,z:a.z,heading:a.heading,speed:a.speed,target:a.target,yawRate:a.yawRate,vx:Math.sin(a.heading)*a.speed,vz:-Math.cos(a.heading)*a.speed,aiTime:0,decision:0});});return true;
+ }catch{return false;}
+}
+export function clearVoyage(north:boolean,storage:VoyageStorage):void {try{storage.removeItem(key(north));}catch{/* Session remains playable without storage. */}}
