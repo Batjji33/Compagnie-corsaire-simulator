@@ -36,6 +36,8 @@
 .brittany-mode .incident-card small {color:var(--muted);}
 .brittany-mode .ferry-energy output {background:var(--raised);color:inherit;border-radius:8px;}
 .brittany-mode .incident-card button {color:inherit;background:transparent;}
+.brittany-mode .evacuation-status strong {color:#f4f6f5;font-variant-numeric:tabular-nums;}
+.brittany-mode .evacuation-status progress {accent-color:var(--accent);}
 @media(max-width:600px) and (orientation:portrait){
  .brittany-mode .identity>.icon {display:none;}
  .brittany-mode .brittany-panel {top:calc(var(--top) + 62px);max-height:calc(100% - 150px);width:calc(100% - 24px);max-width:none;right:12px;}

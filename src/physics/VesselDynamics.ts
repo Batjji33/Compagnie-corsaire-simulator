@@ -11,6 +11,7 @@ export interface ExternalForce { x:number; z:number; yaw:number }
 export class VesselDynamics {
   parameters:BoatParameters=BOAT;
   powerFactor=1;
+  steeringFactor=1;
   readonly command: HelmCommand = { port: 0, starboard: 0, rudder: 0 };
   readonly state: VesselState;
   readonly previous: VesselState;
@@ -60,7 +61,7 @@ export class VesselDynamics {
     const dragForward=(2*this.parameters.engineThrust-this.parameters.surgeLinearDrag*speed)/(speed*speed);
     const dragReverse=(2*this.parameters.engineThrust*this.parameters.reverseEfficiency-this.parameters.surgeLinearDrag*this.parameters.reverseMaxSpeed)/(this.parameters.reverseMaxSpeed**2);
     const drag=this.parameters.surgeLinearDrag*s.surge+(s.surge>=0?dragForward:dragReverse)*s.surge*Math.abs(s.surge);
-    const rudderForce=-this.parameters.rudderLift*s.surge*Math.abs(s.surge)*Math.sin(s.rudder);
+    const rudderForce=-this.parameters.rudderLift*this.steeringFactor*s.surge*Math.abs(s.surge)*Math.sin(s.rudder);
     const lateralDrag=this.parameters.swayLinearDrag*s.sway+this.parameters.swayQuadraticDrag*s.sway*Math.abs(s.sway);
     const yawDrag=(this.parameters.yawLinearDrag+this.parameters.yawSpeedDrag*Math.abs(s.surge))*s.yawRate+this.parameters.yawQuadraticDrag*s.yawRate*Math.abs(s.yawRate);
     const forwardForce=Math.sin(s.heading)*external.x-Math.cos(s.heading)*external.z;
