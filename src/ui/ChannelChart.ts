@@ -5,8 +5,9 @@ export class ChannelChart {
  private context:CanvasRenderingContext2D;
  radar=false;
  constructor(readonly canvas:HTMLCanvasElement){this.context=canvas.getContext('2d')!;}
- draw(state:VesselState,traffic:readonly {x:number;z:number;heading:number;active:boolean}[]=[]):void{
+ draw(state:VesselState,traffic:readonly {x:number;z:number;heading:number;active:boolean}[]=[],radarUnavailable=false):void{
   const c=this.context,w=480,h=400;this.canvas.width=w;this.canvas.height=h;
+  if(this.radar&&radarUnavailable){c.fillStyle='#17191b';c.fillRect(0,0,w,h);c.fillStyle='#fff';c.font='18px sans-serif';c.fillText('Radar indisponible',24,180);c.font='14px sans-serif';c.fillText('Coordonner la veille dans Incidents et équipage.',24,210);this.canvas.setAttribute('aria-label','Radar indisponible. La carte de la Manche reste disponible.');return;}
   const extent=this.radar?4500:180000,scale=this.radar?w/(extent*2):h/340000;
   const cx=this.radar?state.x:45000,cz=this.radar?state.z:-125000;
   const px=(x:number)=>w/2+(x-cx)*scale,pz=(z:number)=>h/2+(z-cz)*scale;
